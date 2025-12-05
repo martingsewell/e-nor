@@ -15,114 +15,360 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
       font-family: Arial, sans-serif;
       background: #1a1a2e;
       transition: background-color 0.1s;
     }
-    #face-svg { position: absolute; top: 5%; transition: transform 0.1s; }
+
+    /* Top section: Face */
+    #face-container {
+      flex: 0 0 50%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #face-svg { transition: transform 0.1s; }
     #face-svg.disco-bounce {
       animation: discoBounce 0.5s ease-in-out infinite;
     }
     @keyframes discoBounce {
       0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-      25% { transform: translateY(-20px) rotate(-5deg) scale(1.05); }
+      25% { transform: translateY(-10px) rotate(-3deg) scale(1.03); }
       50% { transform: translateY(0) rotate(0deg) scale(1); }
-      75% { transform: translateY(-20px) rotate(5deg) scale(1.05); }
+      75% { transform: translateY(-10px) rotate(3deg) scale(1.03); }
+    }
+    #name {
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      color: #00ffff;
+      text-shadow: 0 0 15px #00ffff;
+      margin-top: 5px;
     }
     #name.disco-shake {
       animation: discoShake 0.3s ease-in-out infinite;
     }
     @keyframes discoShake {
       0%, 100% { transform: translateX(0) scale(1); }
-      25% { transform: translateX(-10px) scale(1.1); }
-      75% { transform: translateX(10px) scale(1.1); }
+      25% { transform: translateX(-5px) scale(1.05); }
+      75% { transform: translateX(5px) scale(1.05); }
     }
-    #name {
-      position: absolute;
-      bottom: 18%;
-      font-size: 28px;
-      font-weight: bold;
-      letter-spacing: 8px;
-      color: #00ffff;
-      text-shadow: 0 0 20px #00ffff;
-    }
+
+    /* Status and Settings */
     #status {
       position: absolute;
       top: 10px;
-      right: 10px;
+      right: 45px;
       width: 12px;
       height: 12px;
       border-radius: 50%;
       background: #ff4444;
     }
     #status.connected { background: #00ff00; }
-    #buttons {
+
+    #settings-btn {
       position: absolute;
-      bottom: 3%;
+      top: 8px;
+      right: 10px;
+      font-size: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      opacity: 0.7;
+      padding: 0;
+    }
+    #settings-btn:hover { opacity: 1; }
+
+    /* Bottom section: Chat */
+    #chat-container {
+      flex: 0 0 50%;
+      display: flex;
+      flex-direction: column;
+      background: #0d0d1a;
+      border-top: 2px solid #333;
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: #0066cc;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message.enor {
+      align-self: flex-start;
+      background: #333;
+      color: #00ffff;
+      border-bottom-left-radius: 4px;
+    }
+    .message.enor.thinking {
+      background: #222;
+      color: #888;
+      font-style: italic;
+    }
+    .message.system {
+      align-self: center;
+      background: #442222;
+      color: #ffaa88;
+      font-size: 12px;
+      max-width: 95%;
+    }
+
+    #chat-input-container {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 0 10px;
+      padding: 10px;
+      background: #1a1a2e;
+      border-top: 1px solid #333;
     }
-    button {
-      padding: 8px 12px;
+
+    #chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #333;
+      border-radius: 25px;
+      background: #0d0d1a;
+      color: white;
+      outline: none;
+    }
+    #chat-input:focus {
+      border-color: #00ffff;
+    }
+    #chat-input::placeholder {
+      color: #666;
+    }
+
+    #send-btn {
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #00ffff;
+      color: #000;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #send-btn:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    /* Quick actions */
+    #quick-actions {
+      display: flex;
+      gap: 6px;
+      padding: 6px 10px;
+      overflow-x: auto;
+      background: #0d0d1a;
+    }
+    .quick-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+      background: #222;
+      color: #aaa;
+      border: 1px solid #444;
+      border-radius: 15px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .quick-btn:hover {
+      background: #333;
+      color: #fff;
+    }
+    #disco-btn.active { background: #ff00ff; color: #000; border-color: #ff00ff; }
+
+    /* Settings Modal */
+    #settings-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    #settings-modal.visible { display: flex; }
+
+    #settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #settings-header h2 {
+      color: #00ffff;
+      font-size: 20px;
+    }
+    #close-settings {
+      font-size: 28px;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .secret-item {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .secret-item h3 {
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .secret-item .hint {
+      color: #888;
       font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .secret-item .status-icon {
+      font-size: 16px;
+    }
+    .secret-item .status-icon.configured { color: #00ff00; }
+    .secret-item .status-icon.missing { color: #ff4444; }
+
+    .secret-form {
+      display: flex;
+      gap: 8px;
+    }
+    .secret-form input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #0d0d1a;
+      color: #fff;
+      font-size: 14px;
+    }
+    .secret-form input::placeholder { color: #666; }
+    .secret-form button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .secret-form .save-btn {
+      background: #00ff00;
+      color: #000;
+    }
+    .secret-form .delete-btn {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    #test-connection {
+      width: 100%;
+      padding: 15px;
       background: #333;
       color: #fff;
       border: none;
-      border-radius: 20px;
+      border-radius: 10px;
+      font-size: 16px;
       cursor: pointer;
-      text-transform: capitalize;
+      margin-top: 10px;
     }
-    button.active { background: #00ffff; color: #000; }
-    #disco-btn.active { background: #ff00ff; }
-    #version {
-      position: absolute;
-      bottom: 12%;
+    #test-connection:hover { background: #444; }
+
+    #connection-result {
+      text-align: center;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
       font-size: 14px;
-      color: #00ff00;
-      text-shadow: 0 0 10px #00ff00;
-      animation: pulse 2s infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
+    #connection-result.success { background: #224422; color: #00ff00; }
+    #connection-result.error { background: #442222; color: #ff4444; }
   </style>
 </head>
 <body>
-  <div id="status"></div>
+  <!-- Top: Face -->
+  <div id="face-container">
+    <div id="status"></div>
+    <button id="settings-btn" onclick="openSettings()">&#9881;</button>
 
-  <svg id="face-svg" width="320" height="320" viewBox="0 0 400 400">
-    <circle id="ring" cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
-    <g id="leds"></g>
-    <line id="left-brow" x1="110" y1="105" x2="170" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
-    <line id="right-brow" x1="230" y1="105" x2="290" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
-    <ellipse id="left-eye" cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
-    <ellipse id="left-pupil" cx="145" cy="145" rx="12" ry="12" fill="#000"/>
-    <ellipse id="right-eye" cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
-    <ellipse id="right-pupil" cx="265" cy="145" rx="12" ry="12" fill="#000"/>
-    <path id="mouth" d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
-  </svg>
+    <svg id="face-svg" width="200" height="200" viewBox="0 0 400 400">
+      <circle id="ring" cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
+      <g id="leds"></g>
+      <line id="left-brow" x1="110" y1="105" x2="170" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
+      <line id="right-brow" x1="230" y1="105" x2="290" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
+      <ellipse id="left-eye" cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
+      <ellipse id="left-pupil" cx="145" cy="145" rx="12" ry="12" fill="#000"/>
+      <ellipse id="right-eye" cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
+      <ellipse id="right-pupil" cx="265" cy="145" rx="12" ry="12" fill="#000"/>
+      <path id="mouth" d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
+    </svg>
 
-  <div id="name">E-NOR</div>
-  <div id="version">v2.0 - Auto-deployed!</div>
+    <div id="name">E-NOR</div>
+  </div>
 
-  <div id="buttons">
-    <button onclick="setEmotion('happy')" id="btn-happy" class="active">Happy</button>
-    <button onclick="setEmotion('sad')" id="btn-sad">Sad</button>
-    <button onclick="setEmotion('angry')" id="btn-angry">Angry</button>
-    <button onclick="setEmotion('surprised')" id="btn-surprised">Surprised</button>
-    <button onclick="setEmotion('thinking')" id="btn-thinking">Thinking</button>
-    <button onclick="setEmotion('sleepy')" id="btn-sleepy">Sleepy</button>
-    <button onclick="toggleDisco()" id="disco-btn">🕺 DISCO</button>
+  <!-- Bottom: Chat -->
+  <div id="chat-container">
+    <div id="quick-actions">
+      <button class="quick-btn" onclick="setEmotion('happy')">Happy</button>
+      <button class="quick-btn" onclick="setEmotion('sad')">Sad</button>
+      <button class="quick-btn" onclick="setEmotion('surprised')">Surprised</button>
+      <button class="quick-btn" onclick="setEmotion('thinking')">Thinking</button>
+      <button class="quick-btn" onclick="toggleDisco()" id="disco-btn">DISCO</button>
+    </div>
+
+    <div id="chat-messages">
+      <!-- Messages will appear here -->
+    </div>
+
+    <div id="chat-input-container">
+      <input type="text" id="chat-input" placeholder="Say something to E-NOR..." autocomplete="off">
+      <button id="send-btn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal">
+    <div id="settings-header">
+      <h2>E-NOR Settings</h2>
+      <button id="close-settings" onclick="closeSettings()">&times;</button>
+    </div>
+
+    <div id="secrets-list">
+      <!-- Secrets will be loaded here -->
+    </div>
+
+    <button id="test-connection" onclick="testConnection()">Test Chat Connection</button>
+    <div id="connection-result"></div>
   </div>
 
   <script>
-    // WebSocket connection
+    // ==================== WebSocket ====================
     let ws = null;
     const statusEl = document.getElementById('status');
 
@@ -161,21 +407,7 @@
       }
     }
 
-    // Request fullscreen on first tap
-    document.addEventListener('click', function requestFS() {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
-      }
-      document.removeEventListener('click', requestFS);
-    }, { once: true });
-
-    // Keep screen awake
-    if ('wakeLock' in navigator) {
-      navigator.wakeLock.request('screen').catch(() => {});
-    }
-
+    // ==================== Emotions ====================
     const emotions = {
       happy: { eyeH: 30, eyeY: 140, pupilY: 145, mouth: "M 120 220 Q 200 280 280 220", browAngle: 0, color: "#00ffff" },
       sad: { eyeH: 20, eyeY: 150, pupilY: 155, mouth: "M 130 250 Q 200 210 270 250", browAngle: 15, color: "#6688ff" },
@@ -194,7 +426,66 @@
     const discoEmotions = ['happy', 'surprised', 'happy', 'thinking'];
     let discoEmotionIndex = 0;
 
-    // Disco music generator using Web Audio API
+    // Create LED circles
+    const ledsGroup = document.getElementById('leds');
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * 30 - 90) * Math.PI / 180;
+      const x = 200 + 180 * Math.cos(angle);
+      const y = 200 + 180 * Math.sin(angle);
+      const led = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      led.setAttribute("cx", x);
+      led.setAttribute("cy", y);
+      led.setAttribute("r", 8);
+      led.setAttribute("fill", "#00ffff");
+      led.id = `led-${i}`;
+      ledsGroup.appendChild(led);
+    }
+
+    function setEmotion(name) {
+      if (discoMode) toggleDisco();
+      currentEmotion = name;
+      applyEmotion(name);
+      send({ type: 'emotion', emotion: name });
+    }
+
+    function applyEmotion(name) {
+      currentEmotion = name;
+      const e = emotions[name];
+      if (!e) return;
+
+      document.getElementById('left-eye').setAttribute('cy', e.eyeY);
+      document.getElementById('left-eye').setAttribute('ry', e.eyeH);
+      document.getElementById('right-eye').setAttribute('cy', e.eyeY);
+      document.getElementById('right-eye').setAttribute('ry', e.eyeH);
+      document.getElementById('left-pupil').setAttribute('cy', e.pupilY);
+      document.getElementById('left-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+      document.getElementById('right-pupil').setAttribute('cy', e.pupilY);
+      document.getElementById('right-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+      document.getElementById('mouth').setAttribute('d', e.mouth);
+
+      document.getElementById('left-brow').setAttribute('y1', 105 + e.browAngle);
+      document.getElementById('left-brow').setAttribute('y2', 105 - e.browAngle);
+      document.getElementById('right-brow').setAttribute('y1', 105 - e.browAngle);
+      document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
+
+      setColor(e.color);
+    }
+
+    function setColor(color) {
+      document.getElementById('ring').setAttribute('stroke', color);
+      document.getElementById('left-eye').setAttribute('fill', color);
+      document.getElementById('right-eye').setAttribute('fill', color);
+      document.getElementById('left-brow').setAttribute('stroke', color);
+      document.getElementById('right-brow').setAttribute('stroke', color);
+      document.getElementById('mouth').setAttribute('stroke', color);
+      document.getElementById('name').style.color = color;
+      document.getElementById('name').style.textShadow = `0 0 15px ${color}`;
+      for (let i = 0; i < 12; i++) {
+        document.getElementById(`led-${i}`).setAttribute('fill', color);
+      }
+    }
+
+    // ==================== Disco Mode ====================
     function createDiscoMusic() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -243,7 +534,7 @@
       }, 125);
 
       // Funky bass note
-      const bassNotes = [110, 130.81, 146.83, 164.81]; // A2, C3, D3, E3
+      const bassNotes = [110, 130.81, 146.83, 164.81];
       const bassNote = bassNotes[Math.floor(Math.random() * bassNotes.length)];
       const bassOsc = audioCtx.createOscillator();
       const bassGain = audioCtx.createGain();
@@ -260,7 +551,7 @@
     function startDiscoMusic() {
       createDiscoMusic();
       playDiscoBeat();
-      discoInterval = setInterval(playDiscoBeat, 250); // 240 BPM feel
+      discoInterval = setInterval(playDiscoBeat, 250);
     }
 
     function stopDiscoMusic() {
@@ -270,93 +561,24 @@
       }
     }
 
-    // Create LED circles
-    const ledsGroup = document.getElementById('leds');
-    for (let i = 0; i < 12; i++) {
-      const angle = (i * 30 - 90) * Math.PI / 180;
-      const x = 200 + 180 * Math.cos(angle);
-      const y = 200 + 180 * Math.sin(angle);
-      const led = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      led.setAttribute("cx", x);
-      led.setAttribute("cy", y);
-      led.setAttribute("r", 8);
-      led.setAttribute("fill", "#00ffff");
-      led.id = `led-${i}`;
-      ledsGroup.appendChild(led);
-    }
-
-    function setEmotion(name) {
-      if (discoMode) toggleDisco();
-      currentEmotion = name;
-      applyEmotion(name);
-      send({ type: 'emotion', emotion: name });
-    }
-
-    function applyEmotion(name) {
-      currentEmotion = name;
-      const e = emotions[name];
-      if (!e) return;
-
-      document.getElementById('left-eye').setAttribute('cy', e.eyeY);
-      document.getElementById('left-eye').setAttribute('ry', e.eyeH);
-      document.getElementById('right-eye').setAttribute('cy', e.eyeY);
-      document.getElementById('right-eye').setAttribute('ry', e.eyeH);
-      document.getElementById('left-pupil').setAttribute('cy', e.pupilY);
-      document.getElementById('left-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
-      document.getElementById('right-pupil').setAttribute('cy', e.pupilY);
-      document.getElementById('right-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
-      document.getElementById('mouth').setAttribute('d', e.mouth);
-
-      document.getElementById('left-brow').setAttribute('y1', 105 + e.browAngle);
-      document.getElementById('left-brow').setAttribute('y2', 105 - e.browAngle);
-      document.getElementById('right-brow').setAttribute('y1', 105 - e.browAngle);
-      document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
-
-      setColor(e.color);
-
-      document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
-      const btn = document.getElementById(`btn-${name}`);
-      if (btn) btn.classList.add('active');
-    }
-
-    function setColor(color) {
-      document.getElementById('ring').setAttribute('stroke', color);
-      document.getElementById('left-eye').setAttribute('fill', color);
-      document.getElementById('right-eye').setAttribute('fill', color);
-      document.getElementById('left-brow').setAttribute('stroke', color);
-      document.getElementById('right-brow').setAttribute('stroke', color);
-      document.getElementById('mouth').setAttribute('stroke', color);
-      document.getElementById('name').style.color = color;
-      document.getElementById('name').style.textShadow = `0 0 20px ${color}`;
-      for (let i = 0; i < 12; i++) {
-        document.getElementById(`led-${i}`).setAttribute('fill', color);
-      }
-    }
-
     function toggleDisco() {
       discoMode = !discoMode;
       document.getElementById('disco-btn').classList.toggle('active');
-      document.querySelectorAll('#buttons button:not(#disco-btn)').forEach(b => b.classList.remove('active'));
 
       const faceSvg = document.getElementById('face-svg');
       const nameEl = document.getElementById('name');
 
       if (discoMode) {
-        // Start animations
         faceSvg.classList.add('disco-bounce');
         nameEl.classList.add('disco-shake');
-
-        // Start music
         startDiscoMusic();
 
-        // Start expression cycling
         discoEmotionIndex = 0;
         expressionInterval = setInterval(() => {
           discoEmotionIndex = (discoEmotionIndex + 1) % discoEmotions.length;
           const emotion = discoEmotions[discoEmotionIndex];
           const e = emotions[emotion];
 
-          // Apply expression shape (but color will be overridden by disco colors)
           document.getElementById('left-eye').setAttribute('cy', e.eyeY);
           document.getElementById('left-eye').setAttribute('ry', e.eyeH);
           document.getElementById('right-eye').setAttribute('cy', e.eyeY);
@@ -372,27 +594,21 @@
           document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
         }, 500);
       } else {
-        // Stop animations
         faceSvg.classList.remove('disco-bounce');
         nameEl.classList.remove('disco-shake');
-
-        // Stop music
         stopDiscoMusic();
 
-        // Stop expression cycling
         if (expressionInterval) {
           clearInterval(expressionInterval);
           expressionInterval = null;
         }
-
-        // Reset to happy
         applyEmotion('happy');
       }
 
       send({ type: 'disco', enabled: discoMode });
     }
 
-    // Disco animation
+    // Disco animation loop
     setInterval(() => {
       if (discoMode) {
         discoHue = (discoHue + 3) % 360;
@@ -413,7 +629,7 @@
         document.getElementById('right-brow').setAttribute('stroke', mainColor);
         document.getElementById('mouth').setAttribute('stroke', mainColor);
         document.getElementById('name').style.color = mainColor;
-        document.getElementById('name').style.textShadow = `0 0 20px ${mainColor}`;
+        document.getElementById('name').style.textShadow = `0 0 15px ${mainColor}`;
       } else {
         document.body.style.background = '#1a1a2e';
         document.getElementById('ring').setAttribute('stroke-width', 8);
@@ -441,8 +657,202 @@
       }, 150);
     }, 3000 + Math.random() * 2000);
 
-    // Connect on load
+    // ==================== Chat ====================
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    let conversationId = 'ronnie-' + Date.now();
+    let isWaitingForResponse = false;
+
+    function addMessage(text, type) {
+      const msg = document.createElement('div');
+      msg.className = `message ${type}`;
+      msg.textContent = text;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return msg;
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text || isWaitingForResponse) return;
+
+      // Add user message
+      addMessage(text, 'user');
+      chatInput.value = '';
+
+      // Show thinking state
+      isWaitingForResponse = true;
+      sendBtn.disabled = true;
+      applyEmotion('thinking');
+      const thinkingMsg = addMessage('Thinking...', 'enor thinking');
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            conversation_id: conversationId
+          })
+        });
+
+        const data = await response.json();
+
+        // Remove thinking message
+        thinkingMsg.remove();
+
+        // Add E-NOR's response
+        addMessage(data.response, 'enor');
+
+        // Update emotion based on response
+        if (data.emotion && emotions[data.emotion]) {
+          applyEmotion(data.emotion);
+          send({ type: 'emotion', emotion: data.emotion });
+        }
+      } catch (error) {
+        thinkingMsg.remove();
+        addMessage('Oops! Something went wrong. Try again?', 'system');
+        applyEmotion('sad');
+      }
+
+      isWaitingForResponse = false;
+      sendBtn.disabled = false;
+      chatInput.focus();
+    }
+
+    // Enter key to send
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // ==================== Settings ====================
+    function openSettings() {
+      document.getElementById('settings-modal').classList.add('visible');
+      loadSecrets();
+    }
+
+    function closeSettings() {
+      document.getElementById('settings-modal').classList.remove('visible');
+    }
+
+    async function loadSecrets() {
+      const secretsList = document.getElementById('secrets-list');
+
+      try {
+        const response = await fetch('/api/secrets');
+        const data = await response.json();
+
+        secretsList.innerHTML = data.templates.map(template => `
+          <div class="secret-item" data-name="${template.name}">
+            <h3>
+              <span class="status-icon ${template.configured ? 'configured' : 'missing'}">
+                ${template.configured ? '&#10004;' : '&#10008;'}
+              </span>
+              ${template.label}
+              ${template.required ? '<span style="color: #ff6666; font-size: 11px;">(required)</span>' : ''}
+            </h3>
+            <p class="hint">${template.hint}</p>
+            <div class="secret-form">
+              <input type="password" placeholder="${template.configured ? '******* (saved)' : 'Enter value...'}" id="input-${template.name}">
+              <button class="save-btn" onclick="saveSecret('${template.name}')">Save</button>
+              ${template.configured ? `<button class="delete-btn" onclick="deleteSecret('${template.name}')">Delete</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        secretsList.innerHTML = '<p style="color: #ff6666;">Could not load settings. Is E-NOR connected?</p>';
+      }
+    }
+
+    async function saveSecret(name) {
+      const input = document.getElementById(`input-${name}`);
+      const value = input.value.trim();
+
+      if (!value) {
+        alert('Please enter a value');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/secrets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, value })
+        });
+
+        if (response.ok) {
+          input.value = '';
+          loadSecrets();
+        } else {
+          alert('Failed to save secret');
+        }
+      } catch (error) {
+        alert('Could not save secret. Is E-NOR connected?');
+      }
+    }
+
+    async function deleteSecret(name) {
+      if (!confirm(`Delete ${name}?`)) return;
+
+      try {
+        const response = await fetch(`/api/secrets/${name}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          loadSecrets();
+        } else {
+          alert('Failed to delete secret');
+        }
+      } catch (error) {
+        alert('Could not delete secret');
+      }
+    }
+
+    async function testConnection() {
+      const resultEl = document.getElementById('connection-result');
+      resultEl.textContent = 'Testing...';
+      resultEl.className = '';
+
+      try {
+        const response = await fetch('/api/chat/status');
+        const data = await response.json();
+
+        if (data.ready) {
+          resultEl.textContent = 'Chat is ready! Claude API key is configured.';
+          resultEl.className = 'success';
+        } else {
+          resultEl.textContent = 'Chat not ready: ' + data.message;
+          resultEl.className = 'error';
+        }
+      } catch (error) {
+        resultEl.textContent = 'Could not connect to E-NOR server';
+        resultEl.className = 'error';
+      }
+    }
+
+    // ==================== Init ====================
+    // Add welcome message on load
+    addMessage("Hi Ronnie! I'm E-NOR. What would you like to talk about?", 'enor');
+
+    // Connect WebSocket
     connect();
+
+    // Check chat status on load
+    fetch('/api/chat/status').then(r => r.json()).then(data => {
+      if (!data.ready) {
+        addMessage("Tap the gear icon to add my Claude API key so I can chat with you!", 'system');
+      }
+    }).catch(() => {});
+
+    // Keep screen awake
+    if ('wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').catch(() => {});
+    }
   </script>
 </body>
 </html>

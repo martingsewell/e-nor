@@ -4,10 +4,27 @@ E-NOR Robot Server
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from typing import List
 
+from .secrets import router as secrets_router
+from .chat import router as chat_router
+
 app = FastAPI(title="E-NOR", version="0.1.0")
+
+# Add CORS middleware for API requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(secrets_router)
+app.include_router(chat_router)
 
 connected_clients: List[WebSocket] = []
 
