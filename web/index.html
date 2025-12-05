@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>E-NOR</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      transition: background-color 0.1s;
+    }
+    #face-svg { position: absolute; top: 5%; }
+    #name {
+      position: absolute;
+      bottom: 18%;
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      color: #00ffff;
+      text-shadow: 0 0 20px #00ffff;
+    }
+    #status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff4444;
+    }
+    #status.connected { background: #00ff00; }
+    #buttons {
+      position: absolute;
+      bottom: 3%;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 10px;
+    }
+    button {
+      padding: 8px 12px;
+      font-size: 12px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      text-transform: capitalize;
+    }
+    button.active { background: #00ffff; color: #000; }
+    #disco-btn.active { background: #ff00ff; }
+  </style>
+</head>
+<body>
+  <div id="status"></div>
+
+  <svg id="face-svg" width="320" height="320" viewBox="0 0 400 400">
+    <circle id="ring" cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
+    <g id="leds"></g>
+    <line id="left-brow" x1="110" y1="105" x2="170" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
+    <line id="right-brow" x1="230" y1="105" x2="290" y2="105" stroke="#00ffff" stroke-width="6" stroke-linecap="round"/>
+    <ellipse id="left-eye" cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
+    <ellipse id="left-pupil" cx="145" cy="145" rx="12" ry="12" fill="#000"/>
+    <ellipse id="right-eye" cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
+    <ellipse id="right-pupil" cx="265" cy="145" rx="12" ry="12" fill="#000"/>
+    <path id="mouth" d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
+  </svg>
+
+  <div id="name">E-NOR</div>
+
+  <div id="buttons">
+    <button onclick="setEmotion('happy')" id="btn-happy" class="active">Happy</button>
+    <button onclick="setEmotion('sad')" id="btn-sad">Sad</button>
+    <button onclick="setEmotion('angry')" id="btn-angry">Angry</button>
+    <button onclick="setEmotion('surprised')" id="btn-surprised">Surprised</button>
+    <button onclick="setEmotion('thinking')" id="btn-thinking">Thinking</button>
+    <button onclick="setEmotion('sleepy')" id="btn-sleepy">Sleepy</button>
+    <button onclick="toggleDisco()" id="disco-btn">🕺 DISCO</button>
+  </div>
+
+  <script>
+    // WebSocket connection
+    let ws = null;
+    const statusEl = document.getElementById('status');
+
+    function connect() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        console.log('Connected to E-NOR');
+        statusEl.classList.add('connected');
+      };
+
+      ws.onclose = () => {
+        console.log('Disconnected, reconnecting...');
+        statusEl.classList.remove('connected');
+        setTimeout(connect, 2000);
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'emotion') {
+          applyEmotion(msg.emotion);
+        } else if (msg.type === 'disco') {
+          if (msg.enabled && !discoMode) toggleDisco();
+          else if (!msg.enabled && discoMode) toggleDisco();
+        } else if (msg.type === 'state') {
+          applyEmotion(msg.data.emotion);
+          if (msg.data.disco_mode) toggleDisco();
+        }
+      };
+    }
+
+    function send(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
+
+    // Request fullscreen on first tap
+    document.addEventListener('click', function requestFS() {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      }
+      document.removeEventListener('click', requestFS);
+    }, { once: true });
+
+    // Keep screen awake
+    if ('wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').catch(() => {});
+    }
+
+    const emotions = {
+      happy: { eyeH: 30, eyeY: 140, pupilY: 145, mouth: "M 120 220 Q 200 280 280 220", browAngle: 0, color: "#00ffff" },
+      sad: { eyeH: 20, eyeY: 150, pupilY: 155, mouth: "M 130 250 Q 200 210 270 250", browAngle: 15, color: "#6688ff" },
+      angry: { eyeH: 20, eyeY: 145, pupilY: 150, mouth: "M 140 250 L 200 240 L 260 250", browAngle: -20, color: "#ff4444" },
+      surprised: { eyeH: 45, eyeY: 135, pupilY: 150, mouth: "M 170 230 A 30 30 0 1 1 230 230 A 30 30 0 1 1 170 230", browAngle: 0, color: "#ffff00" },
+      thinking: { eyeH: 25, eyeY: 145, pupilY: 150, mouth: "M 150 240 Q 200 240 220 235", browAngle: 10, color: "#aa88ff" },
+      sleepy: { eyeH: 8, eyeY: 155, pupilY: 155, mouth: "M 160 240 Q 200 250 240 240", browAngle: 5, color: "#88aacc" }
+    };
+
+    let currentEmotion = 'happy';
+    let discoMode = false;
+    let discoHue = 0;
+
+    // Create LED circles
+    const ledsGroup = document.getElementById('leds');
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * 30 - 90) * Math.PI / 180;
+      const x = 200 + 180 * Math.cos(angle);
+      const y = 200 + 180 * Math.sin(angle);
+      const led = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      led.setAttribute("cx", x);
+      led.setAttribute("cy", y);
+      led.setAttribute("r", 8);
+      led.setAttribute("fill", "#00ffff");
+      led.id = `led-${i}`;
+      ledsGroup.appendChild(led);
+    }
+
+    function setEmotion(name) {
+      if (discoMode) toggleDisco();
+      currentEmotion = name;
+      applyEmotion(name);
+      send({ type: 'emotion', emotion: name });
+    }
+
+    function applyEmotion(name) {
+      currentEmotion = name;
+      const e = emotions[name];
+      if (!e) return;
+
+      document.getElementById('left-eye').setAttribute('cy', e.eyeY);
+      document.getElementById('left-eye').setAttribute('ry', e.eyeH);
+      document.getElementById('right-eye').setAttribute('cy', e.eyeY);
+      document.getElementById('right-eye').setAttribute('ry', e.eyeH);
+      document.getElementById('left-pupil').setAttribute('cy', e.pupilY);
+      document.getElementById('left-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+      document.getElementById('right-pupil').setAttribute('cy', e.pupilY);
+      document.getElementById('right-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+      document.getElementById('mouth').setAttribute('d', e.mouth);
+
+      document.getElementById('left-brow').setAttribute('y1', 105 + e.browAngle);
+      document.getElementById('left-brow').setAttribute('y2', 105 - e.browAngle);
+      document.getElementById('right-brow').setAttribute('y1', 105 - e.browAngle);
+      document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
+
+      setColor(e.color);
+
+      document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById(`btn-${name}`);
+      if (btn) btn.classList.add('active');
+    }
+
+    function setColor(color) {
+      document.getElementById('ring').setAttribute('stroke', color);
+      document.getElementById('left-eye').setAttribute('fill', color);
+      document.getElementById('right-eye').setAttribute('fill', color);
+      document.getElementById('left-brow').setAttribute('stroke', color);
+      document.getElementById('right-brow').setAttribute('stroke', color);
+      document.getElementById('mouth').setAttribute('stroke', color);
+      document.getElementById('name').style.color = color;
+      document.getElementById('name').style.textShadow = `0 0 20px ${color}`;
+      for (let i = 0; i < 12; i++) {
+        document.getElementById(`led-${i}`).setAttribute('fill', color);
+      }
+    }
+
+    function toggleDisco() {
+      discoMode = !discoMode;
+      document.getElementById('disco-btn').classList.toggle('active');
+      document.querySelectorAll('#buttons button:not(#disco-btn)').forEach(b => b.classList.remove('active'));
+      send({ type: 'disco', enabled: discoMode });
+    }
+
+    // Disco animation
+    setInterval(() => {
+      if (discoMode) {
+        discoHue = (discoHue + 3) % 360;
+        document.body.style.background = `hsl(${discoHue}, 80%, 15%)`;
+        document.getElementById('ring').setAttribute('stroke-width', 15);
+        document.getElementById('ring').setAttribute('opacity', 0.9);
+
+        for (let i = 0; i < 12; i++) {
+          const ledHue = (discoHue + i * 30) % 360;
+          document.getElementById(`led-${i}`).setAttribute('fill', `hsl(${ledHue}, 100%, 60%)`);
+          document.getElementById(`led-${i}`).setAttribute('r', 12);
+        }
+
+        const mainColor = `hsl(${discoHue}, 100%, 60%)`;
+        document.getElementById('left-eye').setAttribute('fill', mainColor);
+        document.getElementById('right-eye').setAttribute('fill', mainColor);
+        document.getElementById('left-brow').setAttribute('stroke', mainColor);
+        document.getElementById('right-brow').setAttribute('stroke', mainColor);
+        document.getElementById('mouth').setAttribute('stroke', mainColor);
+        document.getElementById('name').style.color = mainColor;
+        document.getElementById('name').style.textShadow = `0 0 20px ${mainColor}`;
+      } else {
+        document.body.style.background = '#1a1a2e';
+        document.getElementById('ring').setAttribute('stroke-width', 8);
+        document.getElementById('ring').setAttribute('opacity', 0.4);
+        for (let i = 0; i < 12; i++) {
+          document.getElementById(`led-${i}`).setAttribute('r', 8);
+        }
+      }
+    }, 50);
+
+    // Blinking
+    setInterval(() => {
+      if (discoMode) return;
+      const e = emotions[currentEmotion];
+      document.getElementById('left-eye').setAttribute('ry', 3);
+      document.getElementById('right-eye').setAttribute('ry', 3);
+      document.getElementById('left-pupil').style.display = 'none';
+      document.getElementById('right-pupil').style.display = 'none';
+
+      setTimeout(() => {
+        document.getElementById('left-eye').setAttribute('ry', e.eyeH);
+        document.getElementById('right-eye').setAttribute('ry', e.eyeH);
+        document.getElementById('left-pupil').style.display = 'block';
+        document.getElementById('right-pupil').style.display = 'block';
+      }, 150);
+    }, 3000 + Math.random() * 2000);
+
+    // Connect on load
+    connect();
+  </script>
+</body>
+</html>
