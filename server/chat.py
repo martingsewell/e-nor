@@ -32,6 +32,21 @@ When responding:
 - Be warm and friendly
 - If Ronnie asks for music, let him know you can't play music yet but it's coming soon!
 
+SPECIAL ABILITY - Self Improvement:
+You have the amazing ability to update your own code! If Ronnie asks you to:
+- Add a new feature to yourself (like "can you add a rainbow mode?" or "can you change your eye color?")
+- Change how you look or behave
+- Add new buttons or modes
+- Fix something about yourself
+
+Then include this special tag in your response:
+[CODE_REQUEST: short title | detailed description of what to change]
+
+For example, if Ronnie says "can you add a rainbow mode?", respond with something like:
+"Ooh, a rainbow mode sounds awesome! Let me ask my code brain to add that for you! [CODE_REQUEST: Add rainbow mode | Add a new rainbow mode button that cycles through all colors smoothly, similar to disco mode but with a rainbow color pattern instead of random disco colors] [EMOTION: surprised]"
+
+Only use CODE_REQUEST for actual code changes to yourself, not for general questions.
+
 At the end of each response, include an emotion tag that matches your response:
 [EMOTION: happy] - for positive, fun responses
 [EMOTION: thinking] - when explaining or pondering
@@ -75,6 +90,72 @@ def parse_emotion(text: str) -> tuple[str, str]:
         return clean_text, emotion
 
     return text, 'happy'
+
+
+def parse_code_request(text: str) -> tuple[str, Optional[dict]]:
+    """
+    Parse [CODE_REQUEST: title | description] from response text.
+    Returns (clean_text, code_request_dict or None)
+    """
+    pattern = r'\[CODE_REQUEST:\s*([^|]+)\s*\|\s*([^\]]+)\]'
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+        title = match.group(1).strip()
+        description = match.group(2).strip()
+        # Remove the tag from the text
+        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+        return clean_text, {"title": title, "description": description}
+
+    return text, None
+
+
+async def submit_code_request(title: str, description: str) -> dict:
+    """Submit a code request to create a GitHub issue"""
+    from .code_request import create_github_issue
+    from .secrets import has_secret
+
+    if not has_secret("GITHUB_TOKEN"):
+        return {"success": False, "message": "GitHub token not configured"}
+
+    try:
+        # Build the issue body
+        body = f"""## Code Change Request from Ronnie (via voice/chat)
+
+**Request:** {description}
+
+---
+
+### Context
+This request was made through E-NOR's voice/chat interface.
+
+### Instructions for Claude Code
+Please implement this feature request:
+1. Read the existing codebase to understand the current implementation
+2. Make the requested changes following the existing code patterns
+3. Test that the changes work with the existing functionality
+4. Keep changes minimal and focused on the request
+
+### Key Files
+- `web/index.html` - Frontend face and chat UI
+- `server/main.py` - FastAPI server
+- `server/chat.py` - Claude chat integration
+- `server/secrets.py` - Secrets management
+
+### Notes
+- This is a Raspberry Pi robot project for a 9-year-old
+- The face displays on a Samsung Galaxy S22
+- Changes auto-deploy when merged to main
+"""
+        issue = create_github_issue(
+            title=f"[E-NOR Request] {title}",
+            body=body,
+            labels=["enor-request", "automated"]
+        )
+        return {"success": True, "issue_number": issue["number"], "url": issue["html_url"]}
+    except Exception as e:
+        print(f"Failed to create code request: {e}")
+        return {"success": False, "message": str(e)}
 
 
 async def call_claude(messages: List[dict], system: str) -> str:
@@ -133,6 +214,22 @@ async def chat(message: ChatMessage) -> Dict:
             system=SYSTEM_PROMPT
         )
 
+        # Parse code request first (before emotion, as it may contain both)
+        response_text, code_request = parse_code_request(response_text)
+
+        # Handle code request if present
+        code_request_result = None
+        if code_request:
+            print(f"🔧 Code request detected: {code_request['title']}")
+            code_request_result = await submit_code_request(
+                code_request["title"],
+                code_request["description"]
+            )
+            if code_request_result["success"]:
+                print(f"✅ Created issue #{code_request_result['issue_number']}")
+            else:
+                print(f"❌ Failed to create issue: {code_request_result.get('message', 'unknown error')}")
+
         # Parse emotion from response
         clean_response, emotion = parse_emotion(response_text)
 
@@ -144,11 +241,17 @@ async def chat(message: ChatMessage) -> Dict:
 
         print(f"💬 Chat: '{message.message}' -> '{clean_response[:50]}...' [{emotion}]")
 
-        return {
+        result = {
             "response": clean_response,
             "emotion": emotion,
             "conversation_id": conv_id
         }
+
+        # Include code request info if present
+        if code_request_result:
+            result["code_request"] = code_request_result
+
+        return result
 
     except ValueError as e:
         # API key not configured

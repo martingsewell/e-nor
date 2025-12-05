@@ -10,8 +10,9 @@ from typing import List
 
 from .secrets import router as secrets_router
 from .chat import router as chat_router
+from .code_request import router as code_router
 
-app = FastAPI(title="E-NOR", version="0.1.0")
+app = FastAPI(title="E-NOR", version="0.2.0")
 
 # Add CORS middleware for API requests
 app.add_middleware(
@@ -25,6 +26,7 @@ app.add_middleware(
 # Include routers
 app.include_router(secrets_router)
 app.include_router(chat_router)
+app.include_router(code_router)
 
 connected_clients: List[WebSocket] = []
 

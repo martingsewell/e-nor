@@ -1,0 +1,88 @@
+name: E-NOR Code Request
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  implement-request:
+    # Only run on issues with the enor-request label
+    if: contains(github.event.issue.labels.*.name, 'enor-request')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add comment - Starting work
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 **E-NOR is thinking...** Claude Code is now working on this request!'
+            })
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are implementing a feature request for E-NOR, a friendly robot companion.
+
+            ## Request
+            ${{ github.event.issue.title }}
+
+            ${{ github.event.issue.body }}
+
+            ## Important Guidelines
+            - This is a Raspberry Pi 5 robot project for a 9-year-old named Ronnie
+            - The main files are in web/index.html (frontend) and server/*.py (backend)
+            - Follow existing code patterns and style
+            - Keep changes minimal and focused
+            - Test that existing features still work
+            - Make sure the face emotions and disco mode still function
+
+            Please implement this request, commit your changes, and push to a new branch.
+          allowed_tools: "Edit,Write,Read,Bash,Glob,Grep"
+          timeout_minutes: 10
+
+      - name: Add comment - Completed
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Done!** Claude Code has implemented the request. The changes will auto-deploy to E-NOR shortly!'
+            })
+
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            })
+
+      - name: Add comment - Failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Oops!** Something went wrong. Dad might need to implement this one manually.'
+            })

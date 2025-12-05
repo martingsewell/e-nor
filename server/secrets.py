@@ -37,6 +37,12 @@ SECRET_TEMPLATES = [
         "required": True
     },
     {
+        "name": "GITHUB_TOKEN",
+        "label": "GitHub Token",
+        "hint": "For E-NOR to update its own code! Ask Dad for this.",
+        "required": False
+    },
+    {
         "name": "AMAZON_EMAIL",
         "label": "Amazon Email",
         "hint": "For playing music (coming soon!)",
