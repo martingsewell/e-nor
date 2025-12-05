@@ -62,6 +62,18 @@
     }
     button.active { background: #00ffff; color: #000; }
     #disco-btn.active { background: #ff00ff; }
+    #version {
+      position: absolute;
+      bottom: 12%;
+      font-size: 14px;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
@@ -80,6 +92,7 @@
   </svg>
 
   <div id="name">E-NOR</div>
+  <div id="version">v2.0 - Auto-deployed!</div>
 
   <div id="buttons">
     <button onclick="setEmotion('happy')" id="btn-happy" class="active">Happy</button>
