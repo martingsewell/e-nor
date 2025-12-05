@@ -21,7 +21,24 @@
       background: #1a1a2e;
       transition: background-color 0.1s;
     }
-    #face-svg { position: absolute; top: 5%; }
+    #face-svg { position: absolute; top: 5%; transition: transform 0.1s; }
+    #face-svg.disco-bounce {
+      animation: discoBounce 0.5s ease-in-out infinite;
+    }
+    @keyframes discoBounce {
+      0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+      25% { transform: translateY(-20px) rotate(-5deg) scale(1.05); }
+      50% { transform: translateY(0) rotate(0deg) scale(1); }
+      75% { transform: translateY(-20px) rotate(5deg) scale(1.05); }
+    }
+    #name.disco-shake {
+      animation: discoShake 0.3s ease-in-out infinite;
+    }
+    @keyframes discoShake {
+      0%, 100% { transform: translateX(0) scale(1); }
+      25% { transform: translateX(-10px) scale(1.1); }
+      75% { transform: translateX(10px) scale(1.1); }
+    }
     #name {
       position: absolute;
       bottom: 18%;
@@ -171,6 +188,87 @@
     let currentEmotion = 'happy';
     let discoMode = false;
     let discoHue = 0;
+    let audioCtx = null;
+    let discoInterval = null;
+    let expressionInterval = null;
+    const discoEmotions = ['happy', 'surprised', 'happy', 'thinking'];
+    let discoEmotionIndex = 0;
+
+    // Disco music generator using Web Audio API
+    function createDiscoMusic() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playDiscoBeat() {
+      if (!audioCtx || !discoMode) return;
+
+      const now = audioCtx.currentTime;
+
+      // Kick drum
+      const kickOsc = audioCtx.createOscillator();
+      const kickGain = audioCtx.createGain();
+      kickOsc.type = 'sine';
+      kickOsc.frequency.setValueAtTime(150, now);
+      kickOsc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+      kickGain.gain.setValueAtTime(0.8, now);
+      kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      kickOsc.connect(kickGain);
+      kickGain.connect(audioCtx.destination);
+      kickOsc.start(now);
+      kickOsc.stop(now + 0.2);
+
+      // Hi-hat on off-beats
+      setTimeout(() => {
+        if (!discoMode) return;
+        const hihatOsc = audioCtx.createOscillator();
+        const hihatGain = audioCtx.createGain();
+        const hihatFilter = audioCtx.createBiquadFilter();
+        hihatOsc.type = 'square';
+        hihatOsc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        hihatFilter.type = 'highpass';
+        hihatFilter.frequency.setValueAtTime(7000, audioCtx.currentTime);
+        hihatGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        hihatGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        hihatOsc.connect(hihatFilter);
+        hihatFilter.connect(hihatGain);
+        hihatGain.connect(audioCtx.destination);
+        hihatOsc.start(audioCtx.currentTime);
+        hihatOsc.stop(audioCtx.currentTime + 0.05);
+      }, 125);
+
+      // Funky bass note
+      const bassNotes = [110, 130.81, 146.83, 164.81]; // A2, C3, D3, E3
+      const bassNote = bassNotes[Math.floor(Math.random() * bassNotes.length)];
+      const bassOsc = audioCtx.createOscillator();
+      const bassGain = audioCtx.createGain();
+      bassOsc.type = 'sawtooth';
+      bassOsc.frequency.setValueAtTime(bassNote, now);
+      bassGain.gain.setValueAtTime(0.3, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      bassOsc.connect(bassGain);
+      bassGain.connect(audioCtx.destination);
+      bassOsc.start(now + 0.05);
+      bassOsc.stop(now + 0.2);
+    }
+
+    function startDiscoMusic() {
+      createDiscoMusic();
+      playDiscoBeat();
+      discoInterval = setInterval(playDiscoBeat, 250); // 240 BPM feel
+    }
+
+    function stopDiscoMusic() {
+      if (discoInterval) {
+        clearInterval(discoInterval);
+        discoInterval = null;
+      }
+    }
 
     // Create LED circles
     const ledsGroup = document.getElementById('leds');
@@ -239,6 +337,58 @@
       discoMode = !discoMode;
       document.getElementById('disco-btn').classList.toggle('active');
       document.querySelectorAll('#buttons button:not(#disco-btn)').forEach(b => b.classList.remove('active'));
+
+      const faceSvg = document.getElementById('face-svg');
+      const nameEl = document.getElementById('name');
+
+      if (discoMode) {
+        // Start animations
+        faceSvg.classList.add('disco-bounce');
+        nameEl.classList.add('disco-shake');
+
+        // Start music
+        startDiscoMusic();
+
+        // Start expression cycling
+        discoEmotionIndex = 0;
+        expressionInterval = setInterval(() => {
+          discoEmotionIndex = (discoEmotionIndex + 1) % discoEmotions.length;
+          const emotion = discoEmotions[discoEmotionIndex];
+          const e = emotions[emotion];
+
+          // Apply expression shape (but color will be overridden by disco colors)
+          document.getElementById('left-eye').setAttribute('cy', e.eyeY);
+          document.getElementById('left-eye').setAttribute('ry', e.eyeH);
+          document.getElementById('right-eye').setAttribute('cy', e.eyeY);
+          document.getElementById('right-eye').setAttribute('ry', e.eyeH);
+          document.getElementById('left-pupil').setAttribute('cy', e.pupilY);
+          document.getElementById('left-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+          document.getElementById('right-pupil').setAttribute('cy', e.pupilY);
+          document.getElementById('right-pupil').setAttribute('ry', Math.min(12, e.eyeH - 5));
+          document.getElementById('mouth').setAttribute('d', e.mouth);
+          document.getElementById('left-brow').setAttribute('y1', 105 + e.browAngle);
+          document.getElementById('left-brow').setAttribute('y2', 105 - e.browAngle);
+          document.getElementById('right-brow').setAttribute('y1', 105 - e.browAngle);
+          document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
+        }, 500);
+      } else {
+        // Stop animations
+        faceSvg.classList.remove('disco-bounce');
+        nameEl.classList.remove('disco-shake');
+
+        // Stop music
+        stopDiscoMusic();
+
+        // Stop expression cycling
+        if (expressionInterval) {
+          clearInterval(expressionInterval);
+          expressionInterval = null;
+        }
+
+        // Reset to happy
+        applyEmotion('happy');
+      }
+
       send({ type: 'disco', enabled: discoMode });
     }
 
