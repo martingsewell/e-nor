@@ -201,6 +201,73 @@
     }
     #disco-btn.active { background: #ff00ff; color: #000; border-color: #ff00ff; }
 
+    /* Voice indicator */
+    #voice-status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 11px;
+      background: #222;
+      color: #888;
+    }
+    #voice-status.listening {
+      background: #002200;
+      color: #00ff00;
+    }
+    #voice-status.conversation {
+      background: #220022;
+      color: #ff00ff;
+      animation: pulse 1s infinite;
+    }
+    #voice-status.speaking {
+      background: #002222;
+      color: #00ffff;
+    }
+    #voice-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+    #voice-status.listening #voice-dot { background: #00ff00; }
+    #voice-status.conversation #voice-dot { background: #ff00ff; }
+    #voice-status.speaking #voice-dot { background: #00ffff; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Mic button */
+    #mic-btn {
+      padding: 12px;
+      font-size: 20px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #mic-btn.active {
+      background: #ff00ff;
+      animation: pulse 1s infinite;
+    }
+    #mic-btn:disabled {
+      background: #222;
+      color: #555;
+      cursor: not-allowed;
+    }
+
     /* Settings Modal */
     #settings-modal {
       display: none;
@@ -317,6 +384,10 @@
 <body>
   <!-- Top: Face -->
   <div id="face-container">
+    <div id="voice-status">
+      <div id="voice-dot"></div>
+      <span id="voice-text">Say "Hey E-NOR"</span>
+    </div>
     <div id="status"></div>
     <button id="settings-btn" onclick="openSettings()">&#9881;</button>
 
@@ -350,6 +421,7 @@
     </div>
 
     <div id="chat-input-container">
+      <button id="mic-btn" onclick="toggleVoiceMode()">&#127908;</button>
       <input type="text" id="chat-input" placeholder="Say something to E-NOR..." autocomplete="off">
       <button id="send-btn" onclick="sendMessage()">Send</button>
     </div>
@@ -838,9 +910,228 @@
       }
     }
 
+    // ==================== Voice Interface ====================
+    const voiceStatus = document.getElementById('voice-status');
+    const voiceText = document.getElementById('voice-text');
+    const micBtn = document.getElementById('mic-btn');
+
+    let recognition = null;
+    let synthesis = window.speechSynthesis;
+    let voiceMode = 'idle'; // 'idle', 'listening', 'conversation', 'speaking'
+    let inConversation = false;
+    let voiceSupported = false;
+
+    // Check if speech recognition is supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      voiceSupported = true;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'en-GB';
+
+      recognition.onresult = handleSpeechResult;
+      recognition.onerror = handleSpeechError;
+      recognition.onend = handleSpeechEnd;
+    } else {
+      voiceText.textContent = 'Voice not supported';
+      micBtn.disabled = true;
+    }
+
+    function setVoiceState(state, text) {
+      voiceMode = state;
+      voiceStatus.className = state === 'idle' ? '' : state;
+      voiceText.textContent = text;
+      micBtn.classList.toggle('active', inConversation);
+    }
+
+    function startListening() {
+      if (!voiceSupported || !recognition) return;
+      try {
+        recognition.start();
+        setVoiceState('listening', inConversation ? 'Listening...' : 'Say "Hey E-NOR"');
+      } catch (e) {
+        // Already started
+      }
+    }
+
+    function stopListening() {
+      if (!recognition) return;
+      try {
+        recognition.stop();
+      } catch (e) {}
+    }
+
+    function handleSpeechResult(event) {
+      const last = event.results.length - 1;
+      const transcript = event.results[last][0].transcript.toLowerCase().trim();
+      console.log('Heard:', transcript);
+
+      if (!inConversation) {
+        // Check for wake word
+        if (transcript.includes('hey e-nor') || transcript.includes('hey enor') ||
+            transcript.includes('hey e nor') || transcript.includes('heyeanor') ||
+            transcript.includes('a nor') || transcript.includes('enor')) {
+          startConversation();
+        }
+      } else {
+        // In conversation mode - process the speech
+        processVoiceInput(transcript);
+      }
+    }
+
+    function handleSpeechError(event) {
+      console.log('Speech error:', event.error);
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        // Restart listening
+        setTimeout(startListening, 100);
+      }
+    }
+
+    function handleSpeechEnd() {
+      // Restart listening unless we're speaking
+      if (voiceMode !== 'speaking') {
+        setTimeout(startListening, 100);
+      }
+    }
+
+    function startConversation() {
+      inConversation = true;
+      setVoiceState('conversation', 'Listening...');
+      applyEmotion('happy');
+
+      // Greet the user
+      speak("Hey! What's up?");
+    }
+
+    function endConversation() {
+      inConversation = false;
+      setVoiceState('listening', 'Say "Hey E-NOR"');
+      applyEmotion('happy');
+    }
+
+    async function processVoiceInput(text) {
+      if (!text || text.length < 2) return;
+
+      // Check for goodbye phrases
+      const goodbyePhrases = ['goodbye', 'bye bye', 'bye e-nor', 'bye enor', 'see you',
+                              'see ya', 'talk later', 'that\'s all', 'i\'m done', 'finished'];
+      const isGoodbye = goodbyePhrases.some(phrase => text.includes(phrase));
+
+      // Add user message to chat
+      addMessage(text, 'user');
+
+      // Show thinking
+      setVoiceState('conversation', 'Thinking...');
+      applyEmotion('thinking');
+      stopListening();
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            conversation_id: conversationId
+          })
+        });
+
+        const data = await response.json();
+
+        // Add to chat
+        addMessage(data.response, 'enor');
+
+        // Update emotion
+        if (data.emotion && emotions[data.emotion]) {
+          applyEmotion(data.emotion);
+          send({ type: 'emotion', emotion: data.emotion });
+        }
+
+        // Speak the response
+        await speak(data.response);
+
+        // Check if this was a goodbye
+        if (isGoodbye || data.response.toLowerCase().includes('goodbye') ||
+            data.response.toLowerCase().includes('bye')) {
+          endConversation();
+        } else {
+          // Continue conversation
+          setVoiceState('conversation', 'Listening...');
+          startListening();
+        }
+
+      } catch (error) {
+        console.error('Chat error:', error);
+        await speak("Sorry, my brain got confused. Can you try again?");
+        applyEmotion('sad');
+        setVoiceState('conversation', 'Listening...');
+        startListening();
+      }
+    }
+
+    function speak(text) {
+      return new Promise((resolve) => {
+        if (!synthesis) {
+          resolve();
+          return;
+        }
+
+        // Cancel any ongoing speech
+        synthesis.cancel();
+
+        setVoiceState('speaking', 'Speaking...');
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.1;
+        utterance.volume = 1.0;
+
+        // Try to find a good voice
+        const voices = synthesis.getVoices();
+        const preferredVoice = voices.find(v =>
+          v.name.includes('Daniel') ||
+          v.name.includes('Google UK English Male') ||
+          v.name.includes('English United Kingdom')
+        ) || voices.find(v => v.lang.startsWith('en'));
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.onend = () => {
+          if (inConversation) {
+            setVoiceState('conversation', 'Listening...');
+          } else {
+            setVoiceState('listening', 'Say "Hey E-NOR"');
+          }
+          resolve();
+        };
+
+        utterance.onerror = () => {
+          resolve();
+        };
+
+        synthesis.speak(utterance);
+      });
+    }
+
+    function toggleVoiceMode() {
+      if (!voiceSupported) return;
+
+      if (inConversation) {
+        // End conversation
+        speak("Okay, talk to you later!").then(() => {
+          endConversation();
+        });
+      } else {
+        // Start conversation directly
+        startConversation();
+      }
+    }
+
     // ==================== Init ====================
     // Add welcome message on load
-    addMessage("Hi Ronnie! I'm E-NOR. What would you like to talk about?", 'enor');
+    addMessage("Hi Ronnie! I'm E-NOR. Say 'Hey E-NOR' to start talking, or type below!", 'enor');
 
     // Connect WebSocket
     connect();
@@ -855,6 +1146,24 @@
     // Keep screen awake
     if ('wakeLock' in navigator) {
       navigator.wakeLock.request('screen').catch(() => {});
+    }
+
+    // Start voice listening (need user interaction first on mobile)
+    document.addEventListener('click', function initVoice() {
+      if (voiceSupported) {
+        startListening();
+        // Load voices (needed for some browsers)
+        synthesis.getVoices();
+      }
+      document.removeEventListener('click', initVoice);
+    }, { once: true });
+
+    // Also try to start immediately (works on some browsers)
+    if (voiceSupported) {
+      setTimeout(() => {
+        startListening();
+        synthesis.getVoices();
+      }, 1000);
     }
   </script>
 </body>
