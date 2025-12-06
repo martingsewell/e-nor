@@ -4,10 +4,14 @@ on:
   issues:
     types: [opened, labeled]
 
+concurrency:
+  group: enor-request-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   implement-request:
-    # Only run on issues with the enor-request label
-    if: contains(github.event.issue.labels.*.name, 'enor-request')
+    # Only run on open issues with the enor-request label
+    if: contains(github.event.issue.labels.*.name, 'enor-request') && github.event.issue.state == 'open'
     runs-on: ubuntu-latest
     permissions:
       contents: write
