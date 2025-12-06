@@ -943,6 +943,11 @@
       <button class="quick-btn" onclick="setEmotion('sad')">Sad</button>
       <button class="quick-btn" onclick="setEmotion('surprised')">Surprised</button>
       <button class="quick-btn" onclick="setEmotion('thinking')">Thinking</button>
+      <button class="quick-btn" onclick="setEmotion('glitchy')">Glitchy</button>
+      <button class="quick-btn" onclick="setEmotion('sparkling')">Sparkling</button>
+      <button class="quick-btn" onclick="setEmotion('laser-focused')">Laser Focus</button>
+      <button class="quick-btn" onclick="setEmotion('processing')">Processing</button>
+      <button class="quick-btn" onclick="setEmotion('overclocked')">Overclocked</button>
       <button class="quick-btn" onclick="toggleDisco()" id="disco-btn">DISCO</button>
     </div>
 
@@ -1199,7 +1204,13 @@
       angry: { eyeH: 20, eyeY: 145, pupilY: 150, mouth: "M 140 250 L 200 240 L 260 250", browAngle: -20, color: "#ff4444" },
       surprised: { eyeH: 45, eyeY: 135, pupilY: 150, mouth: "M 170 230 A 30 30 0 1 1 230 230 A 30 30 0 1 1 170 230", browAngle: 0, color: "#ffff00" },
       thinking: { eyeH: 25, eyeY: 145, pupilY: 150, mouth: "M 150 240 Q 200 240 220 235", browAngle: 10, color: "#aa88ff" },
-      sleepy: { eyeH: 8, eyeY: 155, pupilY: 155, mouth: "M 160 240 Q 200 250 240 240", browAngle: 5, color: "#88aacc" }
+      sleepy: { eyeH: 8, eyeY: 155, pupilY: 155, mouth: "M 160 240 Q 200 250 240 240", browAngle: 5, color: "#88aacc" },
+      // New robot-specific emotions
+      glitchy: { eyeH: 15, eyeY: 135, pupilY: 140, mouth: "M 130 240 L 200 235 L 270 245 L 190 250 L 260 240", browAngle: -5, color: "#ff00ff" },
+      sparkling: { eyeH: 35, eyeY: 138, pupilY: 143, mouth: "M 120 225 Q 160 215 200 225 Q 240 215 280 225", browAngle: -8, color: "#00ffaa" },
+      "laser-focused": { eyeH: 12, eyeY: 145, pupilY: 148, mouth: "M 180 245 L 220 245", browAngle: -15, color: "#ff3300" },
+      processing: { eyeH: 18, eyeY: 148, pupilY: 152, mouth: "M 160 245 Q 180 240 200 245 Q 220 240 240 245", browAngle: 8, color: "#3366ff" },
+      overclocked: { eyeH: 40, eyeY: 132, pupilY: 147, mouth: "M 110 215 Q 200 270 290 215", browAngle: -12, color: "#ffaa00" }
     };
 
     let currentEmotion = 'happy';
