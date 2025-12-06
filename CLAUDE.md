@@ -18,6 +18,7 @@ E-NOR is a robot companion for Ronnie (age 9). It runs on a Raspberry Pi 5 with 
 | `server/main.py` | FastAPI app entry point |
 | `server/chat.py` | Claude API integration, E-NOR personality |
 | `server/secrets.py` | API key management (stored in secrets.json) |
+| `server/memories.py` | Memory storage about Ronnie (stored in memories.json) |
 | `server/code_request.py` | GitHub issue creation for self-improvement |
 | `scripts/setup-pi.sh` | One-time Pi setup (systemd, cron, venv) |
 | `scripts/auto-pull.sh` | Auto-deployment script (runs every minute) |
@@ -43,6 +44,12 @@ E-NOR is a robot companion for Ronnie (age 9). It runs on a Raspberry Pi 5 with 
 - **Echo prevention**: Mic stops while E-NOR speaks
 - **Interrupt**: Red "TAP TO INTERRUPT" button during speech
 - **Chat panel**: Hidden by default, tap face to show/hide
+- **End conversation**: Say "goodbye", "end the conversation", "stop listening", etc.
+
+## E-NOR Special Abilities
+
+- **Memory**: E-NOR remembers things about Ronnie (favorite color, friends, hobbies). Memories are stored in `memories.json` and loaded into every conversation.
+- **Self-improvement**: E-NOR can create GitHub issues to request code changes to himself.
 
 ## Development Notes
 

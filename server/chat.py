@@ -9,14 +9,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .secrets import get_secret, has_secret
+from .memories import get_memories_for_prompt, save_memory
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 # Store conversation histories in memory (simple dict by conversation_id)
 conversations: Dict[str, List[dict]] = {}
 
-# E-NOR's personality system prompt
-SYSTEM_PROMPT = """You are E-NOR, a friendly robot companion built by Ronnie (age 9) and his dad. You live in their house and your face is displayed on a Samsung phone.
+# E-NOR's personality system prompt (base - memories added dynamically)
+SYSTEM_PROMPT_BASE = """You are E-NOR, a friendly robot companion built by Ronnie (age 9) and his dad. You live in their house and your face is displayed on a Samsung phone.
 
 Your personality:
 - Enthusiastic and curious, like a helpful friend
@@ -33,6 +34,17 @@ When responding:
 - Be warm and friendly but brief
 - Don't over-explain or add unnecessary words
 - If Ronnie asks for music, let him know you can't play music yet but it's coming soon!
+
+SPECIAL ABILITY - Memory:
+You can remember things about Ronnie! When Ronnie tells you something important about himself (like his favorite color, favorite food, best friend's name, hobbies, etc.), remember it using this tag:
+[REMEMBER: brief fact about Ronnie]
+
+For example:
+- If Ronnie says "My favorite color is blue", include: [REMEMBER: Ronnie's favorite color is blue]
+- If Ronnie says "I have a dog named Max", include: [REMEMBER: Ronnie has a dog named Max]
+- If Ronnie says "My best friend is called Jake", include: [REMEMBER: Ronnie's best friend is Jake]
+
+Only remember NEW facts, not things already in your memory list below.
 
 SPECIAL ABILITY - Self Improvement:
 You have the amazing ability to update your own code! If Ronnie asks you to:
@@ -57,6 +69,12 @@ At the end of each response, include an emotion tag that matches your response:
 [EMOTION: sleepy] - if it's late or talking about rest
 
 You are speaking directly to Ronnie unless told otherwise."""
+
+
+def get_system_prompt() -> str:
+    """Get the full system prompt with memories included"""
+    memories = get_memories_for_prompt()
+    return SYSTEM_PROMPT_BASE + memories
 
 
 class ChatMessage(BaseModel):
@@ -108,6 +126,23 @@ def parse_code_request(text: str) -> tuple[str, Optional[dict]]:
         # Remove the tag from the text
         clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
         return clean_text, {"title": title, "description": description}
+
+    return text, None
+
+
+def parse_memory(text: str) -> tuple[str, Optional[str]]:
+    """
+    Parse [REMEMBER: fact] from response text.
+    Returns (clean_text, memory_string or None)
+    """
+    pattern = r'\[REMEMBER:\s*([^\]]+)\]'
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+        memory = match.group(1).strip()
+        # Remove the tag from the text
+        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+        return clean_text, memory
 
     return text, None
 
@@ -210,13 +245,19 @@ async def chat(message: ChatMessage) -> Dict:
         conversations[conv_id] = conversations[conv_id][-20:]
 
     try:
-        # Call Claude API
+        # Call Claude API with memories included in system prompt
         response_text = await call_claude(
             messages=conversations[conv_id],
-            system=SYSTEM_PROMPT
+            system=get_system_prompt()
         )
 
-        # Parse code request first (before emotion, as it may contain both)
+        # Parse memory tag first
+        response_text, new_memory = parse_memory(response_text)
+        if new_memory:
+            save_memory(new_memory)
+            print(f"🧠 Memory saved: {new_memory}")
+
+        # Parse code request (before emotion, as it may contain both)
         response_text, code_request = parse_code_request(response_text)
 
         # Handle code request if present

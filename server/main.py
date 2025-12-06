@@ -11,6 +11,7 @@ from typing import List
 from .secrets import router as secrets_router
 from .chat import router as chat_router
 from .code_request import router as code_router
+from .memories import router as memories_router
 
 app = FastAPI(title="E-NOR", version="0.2.0")
 
@@ -27,6 +28,7 @@ app.add_middleware(
 app.include_router(secrets_router)
 app.include_router(chat_router)
 app.include_router(code_router)
+app.include_router(memories_router)
 
 connected_clients: List[WebSocket] = []
 
