@@ -91,6 +91,29 @@ def update_memory(topic: str, new_fact: str) -> tuple[bool, Optional[str]]:
     return save_memory(new_fact), None
 
 
+def forget_memory(topic: str) -> tuple[bool, Optional[str]]:
+    """
+    Delete a memory about a topic.
+    Finds memories containing the topic keywords and removes them.
+    Returns (success, deleted_memory or None)
+    """
+    memories = load_memories()
+    topic_lower = topic.lower()
+
+    # Find memories that match the topic
+    for i, memory in enumerate(memories):
+        if topic_lower in memory.lower():
+            deleted_memory = memories.pop(i)
+            try:
+                with open(MEMORY_FILE, 'w') as f:
+                    json.dump({"memories": memories}, f, indent=2)
+                return True, deleted_memory
+            except IOError:
+                return False, None
+
+    return False, None
+
+
 def clear_all_memories() -> bool:
     """Clear all memories"""
     try:

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .secrets import get_secret, has_secret
-from .memories import get_memories_for_prompt, save_memory, update_memory
+from .memories import get_memories_for_prompt, save_memory, update_memory, forget_memory
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -51,7 +51,14 @@ For example:
 - If you remember "Ronnie's favorite color is blue" but Ronnie now says "my favorite color is purple", include: [UPDATE_MEMORY: favorite color | Ronnie's favorite color is purple]
 - If you remember "Ronnie has a dog named Max" but Ronnie says "Max died, we got a new dog called Buddy", include: [UPDATE_MEMORY: dog | Ronnie has a dog named Buddy]
 
-Only remember NEW facts, not things already in your memory list below. Use UPDATE_MEMORY when a fact has changed.
+If Ronnie asks you to FORGET something entirely, use this tag to delete the memory:
+[FORGET: topic keyword]
+
+For example:
+- If Ronnie says "forget my favorite color" or "I don't want you to remember that", include: [FORGET: favorite color]
+- If Ronnie says "forget about my dog", include: [FORGET: dog]
+
+Only remember NEW facts, not things already in your memory list below. Use UPDATE_MEMORY when a fact has changed. Use FORGET when Ronnie wants you to completely forget something.
 
 SPECIAL ABILITY - Self Improvement:
 You have the amazing ability to update your own code! If Ronnie asks you to:
@@ -168,6 +175,23 @@ def parse_update_memory(text: str) -> tuple[str, Optional[dict]]:
         # Remove the tag from the text
         clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
         return clean_text, {"topic": topic, "new_fact": new_fact}
+
+    return text, None
+
+
+def parse_forget(text: str) -> tuple[str, Optional[str]]:
+    """
+    Parse [FORGET: topic] from response text.
+    Returns (clean_text, topic or None)
+    """
+    pattern = r'\[FORGET:\s*([^\]]+)\]'
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+        topic = match.group(1).strip()
+        # Remove the tag from the text
+        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+        return clean_text, topic
 
     return text, None
 
@@ -290,6 +314,15 @@ async def chat(message: ChatMessage) -> Dict:
                 print(f"🧠 Memory updated: '{old}' -> '{memory_update['new_fact']}'")
             else:
                 print(f"🧠 Memory added (no match for '{memory_update['topic']}'): {memory_update['new_fact']}")
+
+        # Parse forget tag
+        response_text, forget_topic = parse_forget(response_text)
+        if forget_topic:
+            success, deleted = forget_memory(forget_topic)
+            if deleted:
+                print(f"🧠 Memory forgotten: '{deleted}'")
+            else:
+                print(f"🧠 No memory found to forget for topic: '{forget_topic}'")
 
         # Parse code request (before emotion, as it may contain both)
         response_text, code_request = parse_code_request(response_text)
