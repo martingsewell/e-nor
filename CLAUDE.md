@@ -26,27 +26,14 @@ E-NOR is a robot companion for Ronnie (age 9). It runs on a Raspberry Pi 5 with 
 
 ### Auto-Deploy Pipeline
 
-1. Push changes to `main` branch on GitHub
-2. Cron job on Pi runs `auto-pull.sh` every minute
-3. Script detects changes, pulls from `origin/main`
-4. If `server/` or `web/` files changed, restarts the `e-nor` systemd service
-5. Changes are live within ~1 minute
+1. Push changes to any branch (e.g., `claude/...`)
+2. GitHub Action automatically merges to `main`
+3. Cron job on Pi runs `auto-pull.sh` every minute
+4. Script detects changes, pulls from `origin/main`
+5. If `server/` or `web/` files changed, restarts the `e-nor` systemd service
+6. Changes are live within ~1-2 minutes
 
-### Manual Deploy (for feature branches)
-
-```bash
-# SSH to Pi
-ssh ronniesewell@192.168.0.40
-
-# Pull specific branch
-cd ~/e-nor
-git fetch origin
-git checkout <branch-name>
-git pull
-
-# Restart service
-sudo systemctl restart e-nor
-```
+**No manual merge required** - just push and wait!
 
 ## Voice Interface
 

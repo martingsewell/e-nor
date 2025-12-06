@@ -29,10 +29,12 @@ Add to home screen for fullscreen PWA experience.
 
 ### Auto-Deploy (Recommended)
 
-Push to `main` branch on GitHub. The Pi automatically:
+Just push to any branch! A GitHub Action automatically merges to `main`, then the Pi:
 1. Pulls changes every minute via cron
 2. Restarts the service if server/web files changed
-3. Changes are live within ~1 minute
+3. Changes are live within ~1-2 minutes
+
+**No manual merge required** - push and wait!
 
 ### Manual Deploy
 
