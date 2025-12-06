@@ -694,9 +694,70 @@
     #speech-preview strong {
       color: #ff88ff;
     }
+    /* Tap to start overlay - requires user gesture to unlock audio */
+    #tap-to-start {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1a1a2e;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.5s ease-out;
+    }
+    #tap-to-start.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #tap-to-start .tap-icon {
+      width: 120px;
+      height: 120px;
+      border: 4px solid #00ffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: tapPulse 2s ease-in-out infinite;
+    }
+    @keyframes tapPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 255, 255, 0.5); }
+    }
+    #tap-to-start .tap-icon svg {
+      width: 60px;
+      height: 60px;
+      fill: #00ffff;
+    }
+    #tap-to-start .tap-text {
+      margin-top: 30px;
+      color: #00ffff;
+      font-size: 18px;
+      letter-spacing: 2px;
+    }
+    #tap-to-start .tap-hint {
+      margin-top: 10px;
+      color: #666;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
+  <!-- Tap to Start - Required for audio unlock on mobile -->
+  <div id="tap-to-start">
+    <div class="tap-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 11.24V7.5C9 6.12 10.12 5 11.5 5S14 6.12 14 7.5v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74l-3.43-.72c-.08-.01-.15-.03-.24-.03-.31 0-.59.13-.79.33l-.79.8 4.94 4.94c.27.27.65.44 1.06.44h6.79c.75 0 1.33-.55 1.44-1.28l.75-5.27c.01-.07.02-.14.02-.21 0-.59-.34-1.15-.91-1.41z"/>
+      </svg>
+    </div>
+    <div class="tap-text">TAP TO WAKE E-NOR</div>
+    <div class="tap-hint">Required for voice on mobile</div>
+  </div>
+
   <!-- Startup Animation Overlay -->
   <div id="startup-overlay">
     <svg id="startup-face" width="200" height="200" viewBox="0 0 400 400">
@@ -2077,8 +2138,50 @@
       }
     }
 
-    // Start the boot sequence
-    runStartup();
+    // Unlock audio with user gesture (required for mobile browsers)
+    function unlockAudio() {
+      return new Promise((resolve) => {
+        if (!synthesis) {
+          console.log('No synthesis available for unlock');
+          resolve();
+          return;
+        }
+
+        // Speak a silent/empty utterance to unlock audio
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0;
+        utterance.onend = () => {
+          console.log('Audio unlocked successfully');
+          resolve();
+        };
+        utterance.onerror = () => {
+          console.log('Audio unlock utterance error (may be fine)');
+          resolve();
+        };
+        synthesis.speak(utterance);
+
+        // Also resolve after timeout in case onend doesn't fire
+        setTimeout(resolve, 500);
+      });
+    }
+
+    // Wait for tap, unlock audio, then start boot sequence
+    const tapToStart = document.getElementById('tap-to-start');
+    tapToStart.addEventListener('click', async () => {
+      console.log('User tapped - unlocking audio...');
+
+      // Unlock audio with user gesture
+      await unlockAudio();
+
+      // Hide tap-to-start overlay
+      tapToStart.classList.add('hidden');
+
+      // Wait for fade animation
+      await new Promise(r => setTimeout(r, 500));
+
+      // Start the boot sequence
+      runStartup();
+    }, { once: true });
   </script>
 </body>
 </html>

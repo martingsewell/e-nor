@@ -101,7 +101,7 @@ def get_secret(name: str) -> Optional[str]:
 def has_secret(name: str) -> bool:
     """Check if a secret exists"""
     secrets = _load_secrets()
-    return name in secrets and secrets[name]
+    return bool(name in secrets and secrets[name])
 
 
 @router.get("")
