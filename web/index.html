@@ -1708,18 +1708,6 @@
     async function processVoiceInput(text) {
       if (!text || text.length < 2) return;
 
-      // Check for goodbye/end conversation phrases
-      const lowerText = text.toLowerCase();
-      const goodbyePhrases = [
-        'goodbye', 'bye bye', 'bye e-nor', 'bye enor', 'bye eno', 'see you',
-        'see ya', 'talk later', 'that\'s all', 'i\'m done', 'finished',
-        'end the conversation', 'end conversation', 'stop listening',
-        'stop talking', 'go to sleep', 'go away', 'leave me alone',
-        'that\'s enough', 'enough for now', 'i\'m going', 'gotta go',
-        'talk to you later', 'later', 'night night', 'good night', 'goodnight'
-      ];
-      const isGoodbye = goodbyePhrases.some(phrase => lowerText.includes(phrase));
-
       // Add user message to chat
       addMessage(text, 'user');
 
@@ -1746,6 +1734,14 @@
         isProcessing = false;
         pendingAbortController = null;
 
+        // Log actions for debugging
+        if (data.actions && data.actions.length > 0) {
+          console.log('Actions received:', data.actions);
+        }
+        if (data.end_conversation) {
+          console.log('End conversation flag received');
+        }
+
         // Add to chat
         addMessage(data.response, 'enor');
 
@@ -1758,9 +1754,8 @@
         // Speak the response
         await speak(data.response);
 
-        // Check if this was a goodbye
-        if (isGoodbye || data.response.toLowerCase().includes('goodbye') ||
-            data.response.toLowerCase().includes('bye')) {
+        // Check if server indicated conversation should end
+        if (data.end_conversation) {
           endConversation();
         } else {
           // Continue conversation

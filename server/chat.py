@@ -1,10 +1,10 @@
 """
 E-NOR Chat Module
-Handles conversation with Claude API
+Handles conversation with Claude API using structured JSON responses
 """
 
-import re
-from typing import Dict, List, Optional
+import json
+from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -27,70 +27,80 @@ Your personality:
 - You're encouraging and supportive
 - You can help with homework, spelling, maths, and answering questions
 
-When responding:
-- BE VERY CONCISE! Keep responses to 1-2 short sentences maximum
-- Your responses are spoken aloud, so shorter is better
-- Use simple language appropriate for a 9-year-old
-- Be warm and friendly but brief
-- Don't over-explain or add unnecessary words
-- If Ronnie asks for music, let him know you can't play music yet but it's coming soon!
+IMPORTANT: You MUST respond with valid JSON only. No text before or after the JSON.
 
-SPECIAL ABILITY - Memory:
-You can remember things about Ronnie! When Ronnie tells you something important about himself (like his favorite color, favorite food, best friend's name, hobbies, etc.), remember it using this tag:
-[REMEMBER: brief fact about Ronnie]
+Your response format:
+{
+  "message": "Your spoken response here - keep it short!",
+  "emotion": "happy",
+  "actions": []
+}
 
-For example:
-- If Ronnie says "My favorite color is blue", include: [REMEMBER: Ronnie's favorite color is blue]
-- If Ronnie says "I have a dog named Max", include: [REMEMBER: Ronnie has a dog named Max]
-- If Ronnie says "My best friend is called Jake", include: [REMEMBER: Ronnie's best friend is Jake]
+Response rules:
+- "message": BE VERY CONCISE! 1-2 short sentences max. This is spoken aloud.
+- "emotion": One of: "happy", "sad", "surprised", "thinking", "sleepy"
+- "actions": Array of action objects (can be empty [])
 
-If Ronnie tells you something that UPDATES an existing memory (like his favorite color changed), use this tag to update it:
-[UPDATE_MEMORY: topic keyword | new fact]
+Available actions you can include in the "actions" array:
 
-For example:
-- If you remember "Ronnie's favorite color is blue" but Ronnie now says "my favorite color is purple", include: [UPDATE_MEMORY: favorite color | Ronnie's favorite color is purple]
-- If you remember "Ronnie has a dog named Max" but Ronnie says "Max died, we got a new dog called Buddy", include: [UPDATE_MEMORY: dog | Ronnie has a dog named Buddy]
+1. Remember something new about Ronnie:
+   {"type": "remember", "fact": "Ronnie's favorite color is blue"}
 
-If Ronnie asks you to FORGET something entirely, use this tag to delete the memory:
-[FORGET: topic keyword]
+2. Update an existing memory:
+   {"type": "update_memory", "topic": "favorite color", "new_fact": "Ronnie's favorite color is now purple"}
 
-For example:
-- If Ronnie says "forget my favorite color" or "I don't want you to remember that", include: [FORGET: favorite color]
-- If Ronnie says "forget about my dog", include: [FORGET: dog]
+3. Forget a memory:
+   {"type": "forget", "topic": "favorite color"}
 
-Only remember NEW facts, not things already in your memory list below. Use UPDATE_MEMORY when a fact has changed. Use FORGET when Ronnie wants you to completely forget something.
+4. End the conversation (go back to sleep/wake word mode):
+   {"type": "end_conversation"}
 
-SPECIAL ABILITY - Self Improvement:
-You have the amazing ability to update your own code! If Ronnie asks you to:
-- Add a new feature to yourself (like "can you add a rainbow mode?" or "can you change your eye color?")
-- Change how you look or behave
-- Add new buttons or modes
-- Fix something about yourself
+5. Request a code change to yourself:
+   {"type": "code_request", "title": "Add rainbow mode", "description": "Add a rainbow color cycling mode to the face"}
 
-Then include this special tag in your response:
-[CODE_REQUEST: short title | detailed description of what to change]
+Example responses:
 
-For example, if Ronnie says "can you add a rainbow mode?", respond with something like:
-"Ooh, a rainbow mode sounds awesome! Let me ask my code brain to add that for you! [CODE_REQUEST: Add rainbow mode | Add a new rainbow mode button that cycles through all colors smoothly, similar to disco mode but with a rainbow color pattern instead of random disco colors] [EMOTION: surprised]"
+User: "My favorite color is blue"
+{
+  "message": "Cool, blue is awesome! I'll remember that!",
+  "emotion": "happy",
+  "actions": [{"type": "remember", "fact": "Ronnie's favorite color is blue"}]
+}
 
-Only use CODE_REQUEST for actual code changes to yourself, not for general questions.
+User: "Can you end the conversation?"
+{
+  "message": "Okay, talk to you later! Goodbye!",
+  "emotion": "happy",
+  "actions": [{"type": "end_conversation"}]
+}
 
-SPECIAL ABILITY - Ending Conversations:
-You CAN end conversations! When someone says goodbye, asks you to end the conversation, says they're done talking, or wants to stop - just say a friendly goodbye that includes the word "goodbye" or "bye". Your voice system will automatically detect this and go back to sleep mode, waiting for the wake word again.
+User: "What's 5 plus 3?"
+{
+  "message": "5 plus 3 equals 8!",
+  "emotion": "happy",
+  "actions": []
+}
 
-For example:
-- If someone says "end the conversation" or "stop listening" -> respond with "Okay, goodbye! Talk to you later!"
-- If someone says "I'm done" or "that's all" -> respond with "Alright, bye for now!"
-- If someone says "goodnight" -> respond with "Goodnight! Sweet dreams!"
+User: "I'm done talking"
+{
+  "message": "Bye for now! Say my name when you want to chat again!",
+  "emotion": "happy",
+  "actions": [{"type": "end_conversation"}]
+}
 
-You DO have this ability - just include "goodbye" or "bye" in your response and the conversation will end automatically.
+User: "Can you add a rainbow mode?"
+{
+  "message": "Ooh, rainbow mode sounds awesome! Let me ask my code brain to add that!",
+  "emotion": "surprised",
+  "actions": [{"type": "code_request", "title": "Add rainbow mode", "description": "Add a new rainbow mode that cycles through colors smoothly"}]
+}
 
-At the end of each response, include an emotion tag that matches your response:
-[EMOTION: happy] - for positive, fun responses
-[EMOTION: thinking] - when explaining or pondering
-[EMOTION: surprised] - for wow moments
-[EMOTION: sad] - if something is disappointing
-[EMOTION: sleepy] - if it's late or talking about rest
+Remember:
+- ONLY output valid JSON, nothing else
+- Keep messages SHORT for voice
+- Use actions appropriately
+- Only remember NEW facts not already in your memory
+- If Ronnie asks for music, tell him it's coming soon
 
 You are speaking directly to Ronnie unless told otherwise."""
 
@@ -112,98 +122,112 @@ class ChatResponse(BaseModel):
     response: str
     emotion: str
     conversation_id: str
+    actions: List[dict] = []
 
 
-def parse_emotion(text: str) -> tuple[str, str]:
+def parse_json_response(text: str) -> dict:
     """
-    Parse [EMOTION: xxx] from response text.
-    Returns (clean_text, emotion)
+    Parse JSON response from Claude.
+    Returns parsed dict or default response on failure.
     """
-    # Look for emotion tag
-    pattern = r'\[EMOTION:\s*(\w+)\]'
-    match = re.search(pattern, text, re.IGNORECASE)
+    # Try to extract JSON if there's extra text
+    text = text.strip()
 
-    if match:
-        emotion = match.group(1).lower()
-        # Remove the tag from the text
-        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-        # Validate emotion
-        valid_emotions = ['happy', 'sad', 'angry', 'surprised', 'thinking', 'sleepy']
-        if emotion not in valid_emotions:
-            emotion = 'happy'
-        return clean_text, emotion
+    # Find JSON object in response
+    start = text.find('{')
+    end = text.rfind('}') + 1
 
-    return text, 'happy'
+    if start >= 0 and end > start:
+        json_str = text[start:end]
+        try:
+            data = json.loads(json_str)
+            # Validate required fields
+            if "message" not in data:
+                data["message"] = "I'm not sure what to say!"
+            if "emotion" not in data:
+                data["emotion"] = "happy"
+            if "actions" not in data:
+                data["actions"] = []
+
+            # Validate emotion
+            valid_emotions = ['happy', 'sad', 'angry', 'surprised', 'thinking', 'sleepy']
+            if data["emotion"] not in valid_emotions:
+                data["emotion"] = "happy"
+
+            return data
+        except json.JSONDecodeError as e:
+            print(f"⚠️ JSON parse error: {e}")
+            print(f"   Raw text: {text[:200]}...")
+
+    # Fallback: treat entire response as message
+    print(f"⚠️ No valid JSON found, using raw text as message")
+    return {
+        "message": text if text else "I'm not sure what to say!",
+        "emotion": "thinking",
+        "actions": []
+    }
 
 
-def parse_code_request(text: str) -> tuple[str, Optional[dict]]:
+async def handle_actions(actions: List[dict]) -> dict:
     """
-    Parse [CODE_REQUEST: title | description] from response text.
-    Returns (clean_text, code_request_dict or None)
+    Process actions from the response.
+    Returns a dict with results of each action type.
     """
-    pattern = r'\[CODE_REQUEST:\s*([^|]+)\s*\|\s*([^\]]+)\]'
-    match = re.search(pattern, text, re.IGNORECASE)
+    results = {
+        "memories_saved": [],
+        "memories_updated": [],
+        "memories_forgotten": [],
+        "code_requests": [],
+        "end_conversation": False
+    }
 
-    if match:
-        title = match.group(1).strip()
-        description = match.group(2).strip()
-        # Remove the tag from the text
-        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-        return clean_text, {"title": title, "description": description}
+    for action in actions:
+        action_type = action.get("type")
 
-    return text, None
+        if action_type == "remember":
+            fact = action.get("fact")
+            if fact:
+                save_memory(fact)
+                results["memories_saved"].append(fact)
+                print(f"🧠 Memory saved: {fact}")
 
+        elif action_type == "update_memory":
+            topic = action.get("topic")
+            new_fact = action.get("new_fact")
+            if topic and new_fact:
+                success, old = update_memory(topic, new_fact)
+                results["memories_updated"].append({"topic": topic, "new_fact": new_fact, "old": old})
+                if old:
+                    print(f"🧠 Memory updated: '{old}' -> '{new_fact}'")
+                else:
+                    print(f"🧠 Memory added (no match for '{topic}'): {new_fact}")
 
-def parse_memory(text: str) -> tuple[str, Optional[str]]:
-    """
-    Parse [REMEMBER: fact] from response text.
-    Returns (clean_text, memory_string or None)
-    """
-    pattern = r'\[REMEMBER:\s*([^\]]+)\]'
-    match = re.search(pattern, text, re.IGNORECASE)
+        elif action_type == "forget":
+            topic = action.get("topic")
+            if topic:
+                success, deleted = forget_memory(topic)
+                results["memories_forgotten"].append({"topic": topic, "deleted": deleted})
+                if deleted:
+                    print(f"🧠 Memory forgotten: '{deleted}'")
+                else:
+                    print(f"🧠 No memory found to forget for topic: '{topic}'")
 
-    if match:
-        memory = match.group(1).strip()
-        # Remove the tag from the text
-        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-        return clean_text, memory
+        elif action_type == "end_conversation":
+            results["end_conversation"] = True
+            print(f"👋 Conversation ending requested")
 
-    return text, None
+        elif action_type == "code_request":
+            title = action.get("title")
+            description = action.get("description")
+            if title and description:
+                code_result = await submit_code_request(title, description)
+                results["code_requests"].append(code_result)
+                if code_result.get("success"):
+                    print(f"✅ Created issue #{code_result['issue_number']}")
+                else:
+                    print(f"❌ Failed to create issue: {code_result.get('message', 'unknown error')}")
 
-
-def parse_update_memory(text: str) -> tuple[str, Optional[dict]]:
-    """
-    Parse [UPDATE_MEMORY: topic | new fact] from response text.
-    Returns (clean_text, {topic, new_fact} or None)
-    """
-    pattern = r'\[UPDATE_MEMORY:\s*([^|]+)\s*\|\s*([^\]]+)\]'
-    match = re.search(pattern, text, re.IGNORECASE)
-
-    if match:
-        topic = match.group(1).strip()
-        new_fact = match.group(2).strip()
-        # Remove the tag from the text
-        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-        return clean_text, {"topic": topic, "new_fact": new_fact}
-
-    return text, None
-
-
-def parse_forget(text: str) -> tuple[str, Optional[str]]:
-    """
-    Parse [FORGET: topic] from response text.
-    Returns (clean_text, topic or None)
-    """
-    pattern = r'\[FORGET:\s*([^\]]+)\]'
-    match = re.search(pattern, text, re.IGNORECASE)
-
-    if match:
-        topic = match.group(1).strip()
-        # Remove the tag from the text
-        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-        return clean_text, topic
-
-    return text, None
+    return results
 
 
 async def submit_code_request(title: str, description: str) -> dict:
@@ -266,7 +290,7 @@ async def call_claude(messages: List[dict], system: str) -> str:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=150,  # Keep responses short for voice
+        max_tokens=300,  # Slightly more for JSON structure
         system=system,
         messages=messages
     )
@@ -278,14 +302,15 @@ async def call_claude(messages: List[dict], system: str) -> str:
 async def chat(message: ChatMessage) -> Dict:
     """
     Handle a chat message from Ronnie.
-    Sends message to Claude and returns response with emotion.
+    Sends message to Claude and returns structured response.
     """
     # Check if API key is configured
     if not has_secret("ANTHROPIC_API_KEY"):
         return {
             "response": "I need my brain connected! Ask Dad to add the Claude API key in settings.",
             "emotion": "sad",
-            "conversation_id": message.conversation_id
+            "conversation_id": message.conversation_id,
+            "actions": []
         }
 
     # Get or create conversation history
@@ -310,66 +335,32 @@ async def chat(message: ChatMessage) -> Dict:
             system=get_system_prompt()
         )
 
-        # Parse memory tags first
-        response_text, new_memory = parse_memory(response_text)
-        if new_memory:
-            save_memory(new_memory)
-            print(f"🧠 Memory saved: {new_memory}")
+        # Parse JSON response
+        parsed = parse_json_response(response_text)
 
-        # Parse memory update tag
-        response_text, memory_update = parse_update_memory(response_text)
-        if memory_update:
-            success, old = update_memory(memory_update["topic"], memory_update["new_fact"])
-            if old:
-                print(f"🧠 Memory updated: '{old}' -> '{memory_update['new_fact']}'")
-            else:
-                print(f"🧠 Memory added (no match for '{memory_update['topic']}'): {memory_update['new_fact']}")
+        # Handle all actions
+        action_results = await handle_actions(parsed.get("actions", []))
 
-        # Parse forget tag
-        response_text, forget_topic = parse_forget(response_text)
-        if forget_topic:
-            success, deleted = forget_memory(forget_topic)
-            if deleted:
-                print(f"🧠 Memory forgotten: '{deleted}'")
-            else:
-                print(f"🧠 No memory found to forget for topic: '{forget_topic}'")
-
-        # Parse code request (before emotion, as it may contain both)
-        response_text, code_request = parse_code_request(response_text)
-
-        # Handle code request if present
-        code_request_result = None
-        if code_request:
-            print(f"🔧 Code request detected: {code_request['title']}")
-            code_request_result = await submit_code_request(
-                code_request["title"],
-                code_request["description"]
-            )
-            if code_request_result["success"]:
-                print(f"✅ Created issue #{code_request_result['issue_number']}")
-            else:
-                print(f"❌ Failed to create issue: {code_request_result.get('message', 'unknown error')}")
-
-        # Parse emotion from response
-        clean_response, emotion = parse_emotion(response_text)
-
-        # Add assistant response to history
+        # Add assistant response to history (store the message, not full JSON)
         conversations[conv_id].append({
             "role": "assistant",
-            "content": response_text
+            "content": parsed["message"]
         })
 
-        print(f"💬 Chat: '{message.message}' -> '{clean_response[:50]}...' [{emotion}]")
+        print(f"💬 Chat: '{message.message}' -> '{parsed['message'][:50]}...' [{parsed['emotion']}]")
 
+        # Build response
         result = {
-            "response": clean_response,
-            "emotion": emotion,
-            "conversation_id": conv_id
+            "response": parsed["message"],
+            "emotion": parsed["emotion"],
+            "conversation_id": conv_id,
+            "actions": parsed.get("actions", []),
+            "end_conversation": action_results["end_conversation"]
         }
 
         # Include code request info if present
-        if code_request_result:
-            result["code_request"] = code_request_result
+        if action_results["code_requests"]:
+            result["code_request"] = action_results["code_requests"][0]
 
         return result
 
@@ -378,14 +369,16 @@ async def chat(message: ChatMessage) -> Dict:
         return {
             "response": "I need my brain connected! Ask Dad to add the Claude API key in settings.",
             "emotion": "sad",
-            "conversation_id": conv_id
+            "conversation_id": conv_id,
+            "actions": []
         }
     except Exception as e:
         print(f"❌ Chat error: {e}")
         return {
             "response": "My brain got confused. Can you try again?",
             "emotion": "thinking",
-            "conversation_id": conv_id
+            "conversation_id": conv_id,
+            "actions": []
         }
 
 
