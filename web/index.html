@@ -393,6 +393,141 @@
     }
     #connection-result.success { background: #224422; color: #00ff00; }
     #connection-result.error { background: #442222; color: #ff4444; }
+
+    /* Dev Mode Toggle */
+    .dev-mode-toggle {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dev-mode-toggle h3 {
+      color: #fff;
+      font-size: 14px;
+      margin: 0;
+    }
+    .dev-mode-toggle p {
+      color: #888;
+      font-size: 12px;
+      margin: 5px 0 0 0;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #333;
+      border-radius: 26px;
+      transition: 0.3s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #00ff00;
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Dev Console Panel */
+    #dev-console {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 35%;
+      background: rgba(0, 0, 0, 0.95);
+      border-top: 2px solid #00ff00;
+      z-index: 999;
+      flex-direction: column;
+    }
+    #dev-console.visible {
+      display: flex;
+    }
+    #dev-console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #111;
+      border-bottom: 1px solid #333;
+    }
+    #dev-console-header h4 {
+      color: #00ff00;
+      font-size: 12px;
+      margin: 0;
+      font-family: monospace;
+    }
+    #dev-console-header button {
+      background: #333;
+      border: none;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    #dev-console-header button:hover {
+      background: #444;
+    }
+    #console-output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    .console-line {
+      padding: 3px 0;
+      border-bottom: 1px solid #222;
+      word-break: break-all;
+    }
+    .console-line.log { color: #aaa; }
+    .console-line.info { color: #00ffff; }
+    .console-line.warn { color: #ffaa00; }
+    .console-line.error { color: #ff4444; }
+    .console-line.speech { color: #ff00ff; }
+    .console-line .timestamp {
+      color: #666;
+      margin-right: 8px;
+    }
+    #speech-preview {
+      padding: 8px 12px;
+      background: #1a001a;
+      border-top: 1px solid #333;
+      font-family: monospace;
+      font-size: 12px;
+      color: #ff00ff;
+    }
+    #speech-preview strong {
+      color: #ff88ff;
+    }
   </style>
 </head>
 <body>
@@ -454,9 +589,137 @@
 
     <button id="test-connection" onclick="testConnection()">Test Chat Connection</button>
     <div id="connection-result"></div>
+
+    <div class="dev-mode-toggle">
+      <div>
+        <h3>Developer Mode</h3>
+        <p>Show on-screen console & speech debug</p>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dev-mode-checkbox" onchange="toggleDevMode()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Dev Console -->
+  <div id="dev-console">
+    <div id="dev-console-header">
+      <h4>E-NOR Dev Console</h4>
+      <div>
+        <button onclick="clearDevConsole()">Clear</button>
+        <button onclick="toggleDevMode()">Close</button>
+      </div>
+    </div>
+    <div id="console-output">
+      <!-- Console logs appear here -->
+    </div>
+    <div id="speech-preview">
+      <strong>Speech:</strong> <span id="speech-text">Waiting for speech...</span>
+    </div>
   </div>
 
   <script>
+    // ==================== Dev Console ====================
+    let devModeEnabled = localStorage.getItem('devMode') === 'true';
+    const devConsole = document.getElementById('dev-console');
+    const consoleOutput = document.getElementById('console-output');
+    const speechTextEl = document.getElementById('speech-text');
+    const devModeCheckbox = document.getElementById('dev-mode-checkbox');
+
+    // Restore dev mode state
+    if (devModeEnabled) {
+      devConsole.classList.add('visible');
+      devModeCheckbox.checked = true;
+    }
+
+    // Intercept console methods
+    const originalConsole = {
+      log: console.log.bind(console),
+      warn: console.warn.bind(console),
+      error: console.error.bind(console),
+      info: console.info.bind(console)
+    };
+
+    function addToDevConsole(type, args) {
+      if (!devModeEnabled) return;
+
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+
+      const time = new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 1
+      });
+
+      const message = Array.from(args).map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+
+      line.innerHTML = `<span class="timestamp">${time}</span>${message}`;
+      consoleOutput.appendChild(line);
+
+      // Keep only last 100 lines
+      while (consoleOutput.children.length > 100) {
+        consoleOutput.removeChild(consoleOutput.firstChild);
+      }
+
+      // Auto-scroll to bottom
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    console.log = function(...args) {
+      originalConsole.log(...args);
+      addToDevConsole('log', args);
+    };
+
+    console.warn = function(...args) {
+      originalConsole.warn(...args);
+      addToDevConsole('warn', args);
+    };
+
+    console.error = function(...args) {
+      originalConsole.error(...args);
+      addToDevConsole('error', args);
+    };
+
+    console.info = function(...args) {
+      originalConsole.info(...args);
+      addToDevConsole('info', args);
+    };
+
+    function logSpeech(text, isFinal) {
+      if (devModeEnabled && speechTextEl) {
+        speechTextEl.textContent = isFinal ? `"${text}" ✓` : `"${text}"...`;
+      }
+    }
+
+    function toggleDevMode() {
+      devModeEnabled = !devModeEnabled;
+      localStorage.setItem('devMode', devModeEnabled);
+      devConsole.classList.toggle('visible', devModeEnabled);
+      devModeCheckbox.checked = devModeEnabled;
+
+      if (devModeEnabled) {
+        console.log('Dev mode enabled');
+      }
+    }
+
+    function clearDevConsole() {
+      consoleOutput.innerHTML = '';
+      speechTextEl.textContent = 'Waiting for speech...';
+      console.log('Console cleared');
+    }
+
     // ==================== WebSocket ====================
     let ws = null;
     const statusEl = document.getElementById('status');
@@ -1050,6 +1313,9 @@
       const last = event.results.length - 1;
       const result = event.results[last];
       const transcript = result[0].transcript.toLowerCase().trim();
+
+      // Log to dev console
+      logSpeech(transcript, result.isFinal);
 
       if (!inConversation) {
         // For wake word, check on final results only
