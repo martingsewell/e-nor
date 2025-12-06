@@ -2252,7 +2252,27 @@
 
     async function requestMicPermission() {
       try {
-        // Request microphone permission explicitly
+        // First try to check permission status without triggering notification sounds
+        if ('permissions' in navigator) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'microphone' });
+            if (permission.state === 'granted') {
+              micPermissionGranted = true;
+              console.log('Microphone permission already granted (silent check)');
+              return true;
+            } else if (permission.state === 'denied') {
+              console.log('Microphone permission previously denied');
+              setVoiceState('idle', 'Mic denied - tap for help');
+              showMicHelp();
+              return false;
+            }
+          } catch (permErr) {
+            console.log('Permission query failed, will request directly');
+          }
+        }
+        
+        // Only request if we need to (reduces notification sounds)
+        console.log('Requesting microphone permission (may trigger system sound)');
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         // Stop the stream immediately - we just needed permission
         stream.getTracks().forEach(track => track.stop());
@@ -2297,7 +2317,7 @@
         return;
       }
 
-      // First request mic permission if not granted
+      // First check mic permission if not already granted (avoids unnecessary permission requests)
       if (!micPermissionGranted) {
         const granted = await requestMicPermission();
         if (!granted) return;
@@ -2863,16 +2883,24 @@
         setVoiceState('listening', 'Say "Hey E-NOR"');
       } else {
         setVoiceState('idle', 'Tap to enable voice');
-        // Set up click handler for mic permission
+        // Set up click handler for mic permission (only when user wants voice)
         document.addEventListener('click', async function initVoice(e) {
           if (document.getElementById('settings-modal').contains(e.target)) return;
           if (document.getElementById('startup-overlay').contains(e.target)) return;
           if (micPermissionGranted) return;
 
-          console.log('First click - requesting mic permission');
-          const granted = await requestMicPermission();
-          if (granted) {
-            startListening();
+          // Only request permission if clicking on voice-related elements
+          const isVoiceClick = e.target.closest('#mic-btn') || 
+                               e.target.closest('.voice-status') || 
+                               e.target.textContent.includes('voice') ||
+                               e.target.textContent.includes('mic');
+          
+          if (isVoiceClick) {
+            console.log('Voice-related click - requesting mic permission');
+            const granted = await requestMicPermission();
+            if (granted) {
+              startListening();
+            }
           }
         }, { once: true });
       }
