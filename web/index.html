@@ -839,6 +839,18 @@
     <button id="test-connection" onclick="testConnection()">Test Chat Connection</button>
     <div id="connection-result"></div>
 
+    <!-- Voice Selection -->
+    <div class="secret-item">
+      <h3>Voice Selection</h3>
+      <p class="hint">Choose E-NOR's voice from available options</p>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <select id="voice-selector" style="flex: 1; padding: 10px; border: 1px solid #333; border-radius: 8px; background: #0d0d1a; color: #fff; font-size: 14px;" onchange="changeVoice()">
+          <option value="">Loading voices...</option>
+        </select>
+        <button onclick="testSelectedVoice()" style="padding: 10px 15px; border: none; border-radius: 8px; background: #00ff00; color: #000; cursor: pointer; font-weight: bold;">Test</button>
+      </div>
+    </div>
+
     <div class="dev-mode-toggle">
       <div>
         <h3>Developer Mode</h3>
@@ -1359,6 +1371,10 @@
     function openSettings() {
       document.getElementById('settings-modal').classList.add('visible');
       loadSecrets();
+      // Ensure voice selector is populated when settings open
+      if (synthesis && synthesis.getVoices().length > 0) {
+        populateVoiceSelector();
+      }
     }
 
     function closeSettings() {
@@ -1478,6 +1494,116 @@
     let pendingAbortController = null; // For canceling requests if user keeps talking
     let isProcessing = false; // True during API call
     const SILENCE_DELAY = 2000; // Wait 2 seconds of silence before processing
+
+    // Voice selection
+    let selectedVoice = null;
+    let availableVoices = [];
+    const voiceSelector = document.getElementById('voice-selector');
+
+    // Load saved voice preference
+    function loadVoicePreference() {
+      const savedVoiceName = localStorage.getItem('enor-selected-voice');
+      if (savedVoiceName && availableVoices.length > 0) {
+        const voice = availableVoices.find(v => v.name === savedVoiceName);
+        if (voice) {
+          selectedVoice = voice;
+          voiceSelector.value = savedVoiceName;
+          console.log('Restored voice preference:', voice.name);
+        }
+      }
+    }
+
+    // Save voice preference
+    function saveVoicePreference(voiceName) {
+      localStorage.setItem('enor-selected-voice', voiceName);
+      console.log('Saved voice preference:', voiceName);
+    }
+
+    // Populate voice selector
+    function populateVoiceSelector() {
+      availableVoices = synthesis.getVoices();
+      console.log('Available voices:', availableVoices.length);
+      
+      if (availableVoices.length === 0) {
+        voiceSelector.innerHTML = '<option value="">No voices available</option>';
+        return;
+      }
+
+      // Group voices by language/type for better organization
+      const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
+      const otherVoices = availableVoices.filter(v => !v.lang.startsWith('en'));
+
+      let html = '<option value="">Default Voice</option>';
+      
+      // Add English voices first
+      if (englishVoices.length > 0) {
+        html += '<optgroup label="English Voices">';
+        englishVoices.forEach(voice => {
+          const label = `${voice.name} (${voice.lang})`;
+          html += `<option value="${voice.name}">${label}</option>`;
+        });
+        html += '</optgroup>';
+      }
+
+      // Add other language voices
+      if (otherVoices.length > 0) {
+        html += '<optgroup label="Other Languages">';
+        otherVoices.forEach(voice => {
+          const label = `${voice.name} (${voice.lang})`;
+          html += `<option value="${voice.name}">${label}</option>`;
+        });
+        html += '</optgroup>';
+      }
+
+      voiceSelector.innerHTML = html;
+      
+      // Restore saved preference
+      loadVoicePreference();
+    }
+
+    // Change voice selection
+    function changeVoice() {
+      const selectedVoiceName = voiceSelector.value;
+      if (selectedVoiceName === '') {
+        selectedVoice = null;
+        saveVoicePreference('');
+        console.log('Voice set to browser default');
+      } else {
+        const voice = availableVoices.find(v => v.name === selectedVoiceName);
+        if (voice) {
+          selectedVoice = voice;
+          saveVoicePreference(selectedVoiceName);
+          console.log('Voice changed to:', voice.name, voice.lang);
+        }
+      }
+    }
+
+    // Test the selected voice
+    function testSelectedVoice() {
+      if (!synthesis) {
+        alert('Speech synthesis not available');
+        return;
+      }
+
+      const testPhrases = [
+        "Hi! I'm E-NOR, your robot friend!",
+        "How do I sound with this voice?",
+        "This is just a test to hear my new voice!"
+      ];
+      
+      const testPhrase = testPhrases[Math.floor(Math.random() * testPhrases.length)];
+      
+      // Use the speak function but temporarily override the voice selection
+      const originalVoice = selectedVoice;
+      if (voiceSelector.value) {
+        const voice = availableVoices.find(v => v.name === voiceSelector.value);
+        if (voice) selectedVoice = voice;
+      }
+      
+      speak(testPhrase).then(() => {
+        selectedVoice = originalVoice; // Restore original selection
+      });
+    }
 
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1815,21 +1941,25 @@
           utterance.pitch = 1.1;
           utterance.volume = 1.0;
 
-          // Try to find a good voice
-          const voices = synthesis.getVoices();
-          console.log('Available voices:', voices.length);
+          // Use selected voice or fallback to preferred voice
+          let voiceToUse = selectedVoice;
+          
+          if (!voiceToUse) {
+            const voices = synthesis.getVoices();
+            console.log('No voice selected, using fallback. Available voices:', voices.length);
 
-          const preferredVoice = voices.find(v =>
-            v.name.includes('Daniel') ||
-            v.name.includes('Google UK English Male') ||
-            v.name.includes('English United Kingdom')
-          ) || voices.find(v => v.lang.startsWith('en'));
+            voiceToUse = voices.find(v =>
+              v.name.includes('Daniel') ||
+              v.name.includes('Google UK English Male') ||
+              v.name.includes('English United Kingdom')
+            ) || voices.find(v => v.lang.startsWith('en'));
+          }
 
-          if (preferredVoice) {
-            utterance.voice = preferredVoice;
-            console.log('Using voice:', preferredVoice.name);
+          if (voiceToUse) {
+            utterance.voice = voiceToUse;
+            console.log('Using voice:', voiceToUse.name, '(' + voiceToUse.lang + ')');
           } else {
-            console.log('No preferred voice found, using default');
+            console.log('No voice found, using browser default');
           }
 
           utterance.onstart = () => {
@@ -1961,6 +2091,7 @@
         const voices = synthesis.getVoices();
         if (voices.length > 0) {
           voicesLoaded = true;
+          populateVoiceSelector(); // Populate voice selector if voices already loaded
           resolve();
           return;
         }
@@ -1969,12 +2100,14 @@
         speechSynthesis.onvoiceschanged = () => {
           synthesis.getVoices();
           voicesLoaded = true;
+          populateVoiceSelector(); // Populate voice selector when voices load
           resolve();
         };
 
         // Timeout after 3 seconds in case voices never load
         setTimeout(() => {
           voicesLoaded = true;
+          populateVoiceSelector(); // Try to populate even if timeout occurs
           resolve();
         }, 3000);
       });
