@@ -272,6 +272,10 @@
       background: #ff00ff;
       animation: pulse 1s infinite;
     }
+    #mic-btn.speaking {
+      background: #ff4444;
+      animation: none;
+    }
     #mic-btn:disabled {
       background: #222;
       color: #555;
@@ -931,6 +935,10 @@
     let inConversation = false;
     let voiceSupported = false;
     let micPermissionGranted = false;
+    let isSpeaking = false;
+    let speechBuffer = '';
+    let speechTimeout = null;
+    const SILENCE_DELAY = 1500; // Wait 1.5 seconds of silence before processing
 
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -957,7 +965,12 @@
       voiceMode = state;
       voiceStatus.className = state === 'idle' ? '' : state;
       voiceText.textContent = text;
-      micBtn.classList.toggle('active', inConversation);
+      micBtn.classList.remove('active', 'speaking');
+      if (state === 'speaking') {
+        micBtn.classList.add('speaking');
+      } else if (inConversation) {
+        micBtn.classList.add('active');
+      }
     }
 
     async function requestMicPermission() {
@@ -1028,30 +1041,52 @@
     }
 
     function handleSpeechResult(event) {
+      // Ignore speech while E-NOR is speaking (prevents echo)
+      if (isSpeaking) {
+        console.log('Ignoring speech - E-NOR is speaking');
+        return;
+      }
+
       const last = event.results.length - 1;
       const result = event.results[last];
       const transcript = result[0].transcript.toLowerCase().trim();
 
-      // Only process final results
-      if (!result.isFinal) {
-        console.log('Hearing:', transcript);
-        return;
-      }
-
-      console.log('Heard (final):', transcript);
-
       if (!inConversation) {
-        // Check for wake word
-        if (transcript.includes('hey e-nor') || transcript.includes('hey enor') ||
-            transcript.includes('hey e nor') || transcript.includes('heyeanor') ||
-            transcript.includes('a nor') || transcript.includes('enor') ||
-            transcript.includes('hey nor') || transcript.includes('e-nor') ||
-            transcript.includes('eanor')) {
-          startConversation();
+        // For wake word, check on final results only
+        if (result.isFinal) {
+          console.log('Heard (wake check):', transcript);
+          if (transcript.includes('hey e-nor') || transcript.includes('hey enor') ||
+              transcript.includes('hey e nor') || transcript.includes('heyeanor') ||
+              transcript.includes('a nor') || transcript.includes('enor') ||
+              transcript.includes('hey nor') || transcript.includes('e-nor') ||
+              transcript.includes('eanor')) {
+            startConversation();
+          }
         }
       } else {
-        // In conversation mode - process the speech
-        processVoiceInput(transcript);
+        // In conversation mode - buffer speech and wait for silence
+        if (result.isFinal) {
+          speechBuffer = transcript;
+          console.log('Buffered:', speechBuffer);
+
+          // Clear any existing timeout
+          if (speechTimeout) clearTimeout(speechTimeout);
+
+          // Wait for silence before processing
+          setVoiceState('conversation', 'Listening...');
+          speechTimeout = setTimeout(() => {
+            if (speechBuffer && !isSpeaking) {
+              const textToProcess = speechBuffer;
+              speechBuffer = '';
+              processVoiceInput(textToProcess);
+            }
+          }, SILENCE_DELAY);
+        } else {
+          // Show interim results
+          setVoiceState('conversation', `"${transcript}..."`);
+          // Reset the silence timer on interim results
+          if (speechTimeout) clearTimeout(speechTimeout);
+        }
       }
     }
 
@@ -1069,9 +1104,9 @@
     }
 
     function handleSpeechEnd() {
-      console.log('Speech recognition ended, voiceMode:', voiceMode);
+      console.log('Speech recognition ended, voiceMode:', voiceMode, 'isSpeaking:', isSpeaking);
       // Restart listening unless we're speaking
-      if (voiceMode !== 'speaking') {
+      if (!isSpeaking && voiceMode !== 'speaking') {
         setTimeout(startListening, 500);
       }
     }
@@ -1157,10 +1192,16 @@
           return;
         }
 
+        // Stop listening while speaking to prevent echo
+        isSpeaking = true;
+        stopListening();
+        speechBuffer = '';
+        if (speechTimeout) clearTimeout(speechTimeout);
+
         // Cancel any ongoing speech
         synthesis.cancel();
 
-        setVoiceState('speaking', 'Speaking...');
+        setVoiceState('speaking', 'Speaking... (tap to interrupt)');
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.0;
@@ -1180,15 +1221,23 @@
         }
 
         utterance.onend = () => {
-          if (inConversation) {
-            setVoiceState('conversation', 'Listening...');
-          } else {
-            setVoiceState('listening', 'Say "Hey E-NOR"');
-          }
+          isSpeaking = false;
+          // Wait a moment before resuming listening to avoid catching echo
+          setTimeout(() => {
+            if (inConversation && !isSpeaking) {
+              setVoiceState('conversation', 'Listening...');
+              startListening();
+            } else if (!inConversation) {
+              setVoiceState('listening', 'Say "Hey E-NOR"');
+              startListening();
+            }
+          }, 500);
           resolve();
         };
 
-        utterance.onerror = () => {
+        utterance.onerror = (e) => {
+          console.log('Speech error:', e);
+          isSpeaking = false;
           resolve();
         };
 
@@ -1196,8 +1245,25 @@
       });
     }
 
+    function interruptSpeech() {
+      if (isSpeaking && synthesis) {
+        synthesis.cancel();
+        isSpeaking = false;
+        if (inConversation) {
+          setVoiceState('conversation', 'Listening...');
+          setTimeout(() => startListening(), 300);
+        }
+      }
+    }
+
     async function toggleVoiceMode() {
       if (!voiceSupported) return;
+
+      // If speaking, interrupt
+      if (isSpeaking) {
+        interruptSpeech();
+        return;
+      }
 
       if (inConversation) {
         // End conversation
