@@ -21,6 +21,60 @@
       transition: background-color 0.1s;
     }
 
+    /* Startup overlay - covers everything during boot */
+    #startup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1a1a2e;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease-out;
+    }
+    #startup-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #startup-face {
+      opacity: 0;
+      transform: translateY(100px);
+      transition: all 1s ease-out;
+    }
+    #startup-face.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #startup-name {
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      color: #00ffff;
+      text-shadow: 0 0 20px #00ffff;
+      margin-top: 20px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s ease-out 0.5s;
+    }
+    #startup-name.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #startup-status {
+      margin-top: 30px;
+      color: #666;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #startup-status.visible {
+      opacity: 1;
+    }
+
     /* Top section: Face */
     #face-container {
       flex: 1;
@@ -566,6 +620,20 @@
   </style>
 </head>
 <body>
+  <!-- Startup Animation Overlay -->
+  <div id="startup-overlay">
+    <svg id="startup-face" width="200" height="200" viewBox="0 0 400 400">
+      <circle cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
+      <ellipse cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
+      <ellipse cx="145" cy="145" rx="12" ry="12" fill="#000"/>
+      <ellipse cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
+      <ellipse cx="265" cy="145" rx="12" ry="12" fill="#000"/>
+      <path d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
+    </svg>
+    <div id="startup-name">E-NOR</div>
+    <div id="startup-status">Waking up...</div>
+  </div>
+
   <!-- Top: Face -->
   <div id="face-container">
     <div id="voice-status">
@@ -1692,69 +1760,129 @@
       toggleChatPanel();
     });
 
-    // ==================== Init ====================
-    // Add welcome message on load
-    addMessage("Hi Ronnie! I'm E-NOR. Say 'Hey E-NOR' to start talking!", 'enor');
+    // ==================== Startup Sequence ====================
+    const startupOverlay = document.getElementById('startup-overlay');
+    const startupFace = document.getElementById('startup-face');
+    const startupName = document.getElementById('startup-name');
+    const startupStatus = document.getElementById('startup-status');
+    let voicesLoaded = false;
+    let startupComplete = false;
 
-    // Connect WebSocket
-    connect();
-
-    // Check chat status on load
-    fetch('/api/chat/status').then(r => r.json()).then(data => {
-      if (!data.ready) {
-        addMessage("Tap the gear icon to add my Claude API key so I can chat with you!", 'system');
-      }
-    }).catch(() => {});
-
-    // Keep screen awake
-    if ('wakeLock' in navigator) {
-      navigator.wakeLock.request('screen').catch(() => {});
-      // Re-request wake lock when page becomes visible again
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          navigator.wakeLock.request('screen').catch(() => {});
+    // Wait for voices to load (returns a promise)
+    function waitForVoices() {
+      return new Promise((resolve) => {
+        if (!synthesis) {
+          resolve();
+          return;
         }
+
+        const voices = synthesis.getVoices();
+        if (voices.length > 0) {
+          voicesLoaded = true;
+          resolve();
+          return;
+        }
+
+        // Chrome loads voices asynchronously
+        speechSynthesis.onvoiceschanged = () => {
+          synthesis.getVoices();
+          voicesLoaded = true;
+          resolve();
+        };
+
+        // Timeout after 3 seconds in case voices never load
+        setTimeout(() => {
+          voicesLoaded = true;
+          resolve();
+        }, 3000);
       });
     }
 
-    // Load voices for TTS
-    if (synthesis) {
-      synthesis.getVoices();
-      // Chrome needs this event
-      speechSynthesis.onvoiceschanged = () => synthesis.getVoices();
-    }
+    // Run the startup sequence
+    async function runStartup() {
+      console.log('Starting E-NOR boot sequence...');
 
-    // Auto-start wake word detection if mic permission already granted
-    async function autoStartVoice() {
-      if (!voiceSupported) return;
+      // Step 1: Show face rising up
+      startupStatus.classList.add('visible');
+      await new Promise(r => setTimeout(r, 300));
+      startupFace.classList.add('visible');
 
-      try {
-        // Check if permission was already granted
-        const permission = await navigator.permissions.query({ name: 'microphone' });
-        if (permission.state === 'granted') {
-          console.log('Mic permission already granted - auto-starting');
-          micPermissionGranted = true;
-          startListening();
-          setVoiceState('listening', 'Say "Hey E-NOR"');
-        } else {
-          // Need first click to request permission
-          setVoiceState('idle', 'Tap to enable voice');
-          document.addEventListener('click', async function initVoice(e) {
-            if (document.getElementById('settings-modal').contains(e.target)) return;
-            if (micPermissionGranted) return;
+      // Step 2: Show name
+      await new Promise(r => setTimeout(r, 500));
+      startupName.classList.add('visible');
 
-            console.log('First click - requesting mic permission');
-            const granted = await requestMicPermission();
-            if (granted) {
-              startListening();
-            }
-          }, { once: true });
+      // Step 3: Connect WebSocket while animating
+      connect();
+
+      // Step 4: Wait for voices to load
+      startupStatus.textContent = 'Loading voice...';
+      await waitForVoices();
+      console.log('Voices loaded:', voicesLoaded);
+
+      // Step 5: Check mic permission
+      startupStatus.textContent = 'Checking microphone...';
+      let micReady = false;
+      if (voiceSupported) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'microphone' });
+          if (permission.state === 'granted') {
+            micPermissionGranted = true;
+            micReady = true;
+            console.log('Mic permission already granted');
+          }
+        } catch (err) {
+          console.log('Permissions API not supported');
         }
+      }
+
+      // Step 6: Keep screen awake
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            navigator.wakeLock.request('screen').catch(() => {});
+          }
+        });
+      }
+
+      // Step 7: Check if chat is ready
+      let chatReady = false;
+      try {
+        const response = await fetch('/api/chat/status');
+        const data = await response.json();
+        chatReady = data.ready;
       } catch (err) {
-        // Permissions API not supported - fall back to click handler
+        console.log('Could not check chat status');
+      }
+
+      // Step 8: Wait a moment for everything to settle
+      startupStatus.textContent = 'Ready!';
+      await new Promise(r => setTimeout(r, 500));
+
+      // Step 9: Hide overlay
+      startupOverlay.classList.add('hidden');
+      startupComplete = true;
+
+      // Step 10: Speak intro and start listening
+      if (chatReady && voicesLoaded) {
+        // Small delay to ensure overlay is hidden
+        await new Promise(r => setTimeout(r, 300));
+        await speak("Hey! I'm E-NOR. Say my name when you want to chat!");
+        addMessage("Hey! I'm E-NOR. Say 'Hey E-NOR' when you want to chat!", 'enor');
+      } else if (!chatReady) {
+        addMessage("Tap the gear icon to add my Claude API key so I can chat with you!", 'system');
+      }
+
+      // Step 11: Start listening for wake word
+      if (micReady) {
+        startListening();
+        setVoiceState('listening', 'Say "Hey E-NOR"');
+      } else {
         setVoiceState('idle', 'Tap to enable voice');
+        // Set up click handler for mic permission
         document.addEventListener('click', async function initVoice(e) {
           if (document.getElementById('settings-modal').contains(e.target)) return;
+          if (document.getElementById('startup-overlay').contains(e.target)) return;
           if (micPermissionGranted) return;
 
           console.log('First click - requesting mic permission');
@@ -1766,7 +1894,8 @@
       }
     }
 
-    autoStartVoice();
+    // Start the boot sequence
+    runStartup();
   </script>
 </body>
 </html>
