@@ -1,0 +1,38 @@
+{
+  "versions": [
+    {
+      "id": "v001_1765042441",
+      "version_number": 1,
+      "description": "Initial E-NOR setup",
+      "status": "working",
+      "created_at": "2025-12-06T17:34:01.666248",
+      "is_current": false,
+      "backup_available": true,
+      "change_summary": [
+        "web/index.html",
+        "server/main.py",
+        "server/chat.py",
+        "server/secrets.py",
+        "server/memories.py",
+        "server/code_request.py"
+      ]
+    },
+    {
+      "id": "v002_1765042452",
+      "version_number": 2,
+      "description": "Added version control system",
+      "status": "working",
+      "created_at": "2025-12-06T17:34:12.031676",
+      "is_current": true,
+      "backup_available": true,
+      "change_summary": [
+        "web/index.html",
+        "server/main.py",
+        "server/chat.py",
+        "server/secrets.py",
+        "server/memories.py",
+        "server/code_request.py"
+      ]
+    }
+  ]
+}
