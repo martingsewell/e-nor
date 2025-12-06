@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .secrets import get_secret, has_secret
-from .memories import get_memories_for_prompt, save_memory
+from .memories import get_memories_for_prompt, save_memory, update_memory
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -44,7 +44,14 @@ For example:
 - If Ronnie says "I have a dog named Max", include: [REMEMBER: Ronnie has a dog named Max]
 - If Ronnie says "My best friend is called Jake", include: [REMEMBER: Ronnie's best friend is Jake]
 
-Only remember NEW facts, not things already in your memory list below.
+If Ronnie tells you something that UPDATES an existing memory (like his favorite color changed), use this tag to update it:
+[UPDATE_MEMORY: topic keyword | new fact]
+
+For example:
+- If you remember "Ronnie's favorite color is blue" but Ronnie now says "my favorite color is purple", include: [UPDATE_MEMORY: favorite color | Ronnie's favorite color is purple]
+- If you remember "Ronnie has a dog named Max" but Ronnie says "Max died, we got a new dog called Buddy", include: [UPDATE_MEMORY: dog | Ronnie has a dog named Buddy]
+
+Only remember NEW facts, not things already in your memory list below. Use UPDATE_MEMORY when a fact has changed.
 
 SPECIAL ABILITY - Self Improvement:
 You have the amazing ability to update your own code! If Ronnie asks you to:
@@ -143,6 +150,24 @@ def parse_memory(text: str) -> tuple[str, Optional[str]]:
         # Remove the tag from the text
         clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
         return clean_text, memory
+
+    return text, None
+
+
+def parse_update_memory(text: str) -> tuple[str, Optional[dict]]:
+    """
+    Parse [UPDATE_MEMORY: topic | new fact] from response text.
+    Returns (clean_text, {topic, new_fact} or None)
+    """
+    pattern = r'\[UPDATE_MEMORY:\s*([^|]+)\s*\|\s*([^\]]+)\]'
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+        topic = match.group(1).strip()
+        new_fact = match.group(2).strip()
+        # Remove the tag from the text
+        clean_text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+        return clean_text, {"topic": topic, "new_fact": new_fact}
 
     return text, None
 
@@ -251,11 +276,20 @@ async def chat(message: ChatMessage) -> Dict:
             system=get_system_prompt()
         )
 
-        # Parse memory tag first
+        # Parse memory tags first
         response_text, new_memory = parse_memory(response_text)
         if new_memory:
             save_memory(new_memory)
             print(f"🧠 Memory saved: {new_memory}")
+
+        # Parse memory update tag
+        response_text, memory_update = parse_update_memory(response_text)
+        if memory_update:
+            success, old = update_memory(memory_update["topic"], memory_update["new_fact"])
+            if old:
+                print(f"🧠 Memory updated: '{old}' -> '{memory_update['new_fact']}'")
+            else:
+                print(f"🧠 Memory added (no match for '{memory_update['topic']}'): {memory_update['new_fact']}")
 
         # Parse code request (before emotion, as it may contain both)
         response_text, code_request = parse_code_request(response_text)

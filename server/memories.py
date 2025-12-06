@@ -66,6 +66,31 @@ def delete_memory(index: int) -> bool:
     return False
 
 
+def update_memory(topic: str, new_fact: str) -> tuple[bool, Optional[str]]:
+    """
+    Update a memory about a topic.
+    Finds memories containing the topic keywords and replaces with new fact.
+    Returns (success, old_memory_that_was_replaced or None)
+    """
+    memories = load_memories()
+    topic_lower = topic.lower()
+
+    # Find memories that match the topic
+    for i, memory in enumerate(memories):
+        if topic_lower in memory.lower():
+            old_memory = memories[i]
+            memories[i] = new_fact.strip()
+            try:
+                with open(MEMORY_FILE, 'w') as f:
+                    json.dump({"memories": memories}, f, indent=2)
+                return True, old_memory
+            except IOError:
+                return False, None
+
+    # No existing memory found - just add the new one
+    return save_memory(new_fact), None
+
+
 def clear_all_memories() -> bool:
     """Clear all memories"""
     try:
