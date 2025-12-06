@@ -22,12 +22,32 @@ Add to home screen for fullscreen PWA experience.
 ## Architecture
 
 - **Pi 5**: Runs FastAPI server, controls motors/LEDs
-- **S22**: Displays animated face, connects via WebSocket
-- **Auto-deploy**: Push to GitHub, Pi pulls automatically every minute
+- **S22**: Displays animated face, voice chat via Web Speech API
+- **Claude**: Powers E-NOR's conversational AI brain
 
-## Development
+## Deployment
 
-Edit code locally, push to GitHub. The Pi will auto-pull and restart within 1 minute.
+### Auto-Deploy (Recommended)
+
+Push to `main` branch on GitHub. The Pi automatically:
+1. Pulls changes every minute via cron
+2. Restarts the service if server/web files changed
+3. Changes are live within ~1 minute
+
+### Manual Deploy
+
+```bash
+# On the Pi
+cd ~/e-nor
+git pull origin main
+sudo systemctl restart e-nor
+```
+
+## Configuration
+
+Open settings (gear icon) in the web UI to configure:
+- **ANTHROPIC_API_KEY** (required) - For Claude chat
+- **GITHUB_TOKEN** (optional) - For self-improvement feature
 
 ## Commands
 
@@ -40,4 +60,15 @@ journalctl -u e-nor -f
 
 # Manual restart
 sudo systemctl restart e-nor
+
+# View auto-pull logs
+cat ~/e-nor/logs/auto-pull.log
 ```
+
+## Features
+
+- Animated face with emotions (happy, sad, surprised, thinking, sleepy)
+- Voice interface with "Hey E-NOR" wake word
+- Text chat as fallback
+- Disco mode with music and lights
+- Developer console for debugging (in settings)
