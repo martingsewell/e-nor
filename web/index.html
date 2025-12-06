@@ -1302,6 +1302,12 @@
     async function startListening() {
       if (!voiceSupported || !recognition) return;
 
+      // NEVER start listening while E-NOR is speaking
+      if (isSpeaking) {
+        console.log('Blocked startListening - E-NOR is speaking');
+        return;
+      }
+
       // First request mic permission if not granted
       if (!micPermissionGranted) {
         const granted = await requestMicPermission();
@@ -1310,7 +1316,7 @@
 
       try {
         recognition.start();
-        setVoiceState('listening', inConversation ? 'Listening...' : 'Say "Hey E-NOR"');
+        setVoiceState(inConversation ? 'conversation' : 'listening', inConversation ? 'Listening...' : 'Say "Hey E-NOR"');
       } catch (e) {
         if (e.name === 'InvalidStateError') {
           // Already started, that's fine
@@ -1324,7 +1330,7 @@
     function stopListening() {
       if (!recognition) return;
       try {
-        recognition.stop();
+        recognition.abort(); // Use abort() instead of stop() for immediate halt
       } catch (e) {}
     }
 
@@ -1389,13 +1395,18 @@
     }
 
     function handleSpeechError(event) {
-      console.log('Speech error:', event.error);
+      console.log('Speech error:', event.error, 'isSpeaking:', isSpeaking);
       if (event.error === 'not-allowed') {
         micPermissionGranted = false;
         setVoiceState('idle', 'Tap mic for permission');
-      } else if (event.error === 'no-speech' || event.error === 'aborted') {
-        // Restart listening
-        setTimeout(startListening, 500);
+      } else if (event.error === 'no-speech') {
+        // Only restart if not speaking
+        if (!isSpeaking) {
+          setTimeout(startListening, 500);
+        }
+      } else if (event.error === 'aborted') {
+        // Aborted intentionally - don't restart automatically
+        console.log('Speech aborted (intentional)');
       } else if (event.error === 'network') {
         setVoiceState('idle', 'Network error - tap to retry');
       }
@@ -1403,8 +1414,8 @@
 
     function handleSpeechEnd() {
       console.log('Speech recognition ended, voiceMode:', voiceMode, 'isSpeaking:', isSpeaking);
-      // Restart listening unless we're speaking
-      if (!isSpeaking && voiceMode !== 'speaking') {
+      // Restart listening ONLY if not speaking
+      if (!isSpeaking) {
         setTimeout(startListening, 500);
       }
     }
