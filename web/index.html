@@ -135,6 +135,16 @@
       font-size: 12px;
       max-width: 95%;
     }
+    .message.system code {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #00ffff;
+    }
+    .message.system strong {
+      color: #ffcc88;
+    }
 
     #chat-input-container {
       display: flex;
@@ -961,9 +971,31 @@
         return true;
       } catch (e) {
         console.error('Microphone permission denied:', e);
-        setVoiceState('idle', 'Mic denied - tap to retry');
+        setVoiceState('idle', 'Mic denied - tap for help');
+        // Show help message in chat
+        showMicHelp();
         return false;
       }
+    }
+
+    function showMicHelp() {
+      // Check if we already showed help
+      if (document.querySelector('.mic-help-message')) return;
+
+      const helpMsg = document.createElement('div');
+      helpMsg.className = 'message system mic-help-message';
+      helpMsg.innerHTML = `
+        <strong>Microphone blocked!</strong> This is because the site uses HTTP, not HTTPS.<br><br>
+        <strong>To fix on Chrome Android:</strong><br>
+        1. Open: <code>chrome://flags</code><br>
+        2. Search: "insecure origins"<br>
+        3. Find: "Insecure origins treated as secure"<br>
+        4. Add: <code>http://192.168.0.40:8080</code><br>
+        5. Tap Enable, then Relaunch<br><br>
+        <em>Or just use the text chat below!</em>
+      `;
+      chatMessages.appendChild(helpMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     async function startListening() {
