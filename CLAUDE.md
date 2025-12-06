@@ -38,9 +38,11 @@ E-NOR is a robot companion for Ronnie (age 9). It runs on a Raspberry Pi 5 with 
 ## Voice Interface
 
 - **Wake word**: "Hey E-NOR" (many phonetic variations supported)
-- **Silence delay**: 3 seconds before processing speech
+- **Silence delay**: 2 seconds before processing speech
+- **Auto-start**: Mic activates automatically if permission was previously granted
 - **Echo prevention**: Mic stops while E-NOR speaks
 - **Interrupt**: Red "TAP TO INTERRUPT" button during speech
+- **Chat panel**: Hidden by default, tap face to show/hide
 
 ## Development Notes
 

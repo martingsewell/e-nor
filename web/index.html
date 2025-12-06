@@ -23,7 +23,7 @@
 
     /* Top section: Face */
     #face-container {
-      flex: 0 0 45%;
+      flex: 1;
       min-height: 180px;
       position: relative;
       display: flex;
@@ -31,6 +31,11 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      cursor: pointer;
+    }
+    /* When chat is visible, face takes less space */
+    body.chat-visible #face-container {
+      flex: 0 0 45%;
     }
     #face-svg { transition: transform 0.1s; }
     #face-svg.disco-bounce {
@@ -84,14 +89,17 @@
     }
     #settings-btn:hover { opacity: 1; }
 
-    /* Bottom section: Chat */
+    /* Bottom section: Chat - hidden by default */
     #chat-container {
       flex: 1;
       min-height: 0; /* important for flex scroll */
-      display: flex;
+      display: none;
       flex-direction: column;
       background: #0d0d1a;
       border-top: 2px solid #333;
+    }
+    body.chat-visible #chat-container {
+      display: flex;
     }
 
     #chat-messages {
@@ -1257,7 +1265,7 @@
     let speechTimeout = null;
     let pendingAbortController = null; // For canceling requests if user keeps talking
     let isProcessing = false; // True during API call
-    const SILENCE_DELAY = 3000; // Wait 3 seconds of silence before processing
+    const SILENCE_DELAY = 2000; // Wait 2 seconds of silence before processing
 
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1664,9 +1672,21 @@
       }
     }
 
+    // ==================== Chat Panel Toggle ====================
+    function toggleChatPanel() {
+      document.body.classList.toggle('chat-visible');
+    }
+
+    // Tap face to show/hide chat panel
+    document.getElementById('face-container').addEventListener('click', (e) => {
+      // Don't toggle if clicking on settings button or voice status
+      if (e.target.closest('#settings-btn') || e.target.closest('#voice-status')) return;
+      toggleChatPanel();
+    });
+
     // ==================== Init ====================
     // Add welcome message on load
-    addMessage("Hi Ronnie! I'm E-NOR. Say 'Hey E-NOR' to start talking, or type below!", 'enor');
+    addMessage("Hi Ronnie! I'm E-NOR. Say 'Hey E-NOR' to start talking!", 'enor');
 
     // Connect WebSocket
     connect();
@@ -1681,6 +1701,12 @@
     // Keep screen awake
     if ('wakeLock' in navigator) {
       navigator.wakeLock.request('screen').catch(() => {});
+      // Re-request wake lock when page becomes visible again
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          navigator.wakeLock.request('screen').catch(() => {});
+        }
+      });
     }
 
     // Load voices for TTS
@@ -1690,25 +1716,49 @@
       speechSynthesis.onvoiceschanged = () => synthesis.getVoices();
     }
 
-    // Show initial voice state
-    if (voiceSupported) {
-      setVoiceState('idle', 'Tap mic to enable voice');
+    // Auto-start wake word detection if mic permission already granted
+    async function autoStartVoice() {
+      if (!voiceSupported) return;
+
+      try {
+        // Check if permission was already granted
+        const permission = await navigator.permissions.query({ name: 'microphone' });
+        if (permission.state === 'granted') {
+          console.log('Mic permission already granted - auto-starting');
+          micPermissionGranted = true;
+          startListening();
+          setVoiceState('listening', 'Say "Hey E-NOR"');
+        } else {
+          // Need first click to request permission
+          setVoiceState('idle', 'Tap to enable voice');
+          document.addEventListener('click', async function initVoice(e) {
+            if (document.getElementById('settings-modal').contains(e.target)) return;
+            if (micPermissionGranted) return;
+
+            console.log('First click - requesting mic permission');
+            const granted = await requestMicPermission();
+            if (granted) {
+              startListening();
+            }
+          }, { once: true });
+        }
+      } catch (err) {
+        // Permissions API not supported - fall back to click handler
+        setVoiceState('idle', 'Tap to enable voice');
+        document.addEventListener('click', async function initVoice(e) {
+          if (document.getElementById('settings-modal').contains(e.target)) return;
+          if (micPermissionGranted) return;
+
+          console.log('First click - requesting mic permission');
+          const granted = await requestMicPermission();
+          if (granted) {
+            startListening();
+          }
+        }, { once: true });
+      }
     }
 
-    // Request mic permission on first user interaction anywhere
-    document.addEventListener('click', async function initVoice(e) {
-      // Don't trigger on settings modal clicks
-      if (document.getElementById('settings-modal').contains(e.target)) return;
-
-      if (voiceSupported && !micPermissionGranted) {
-        console.log('First click - requesting mic permission');
-        const granted = await requestMicPermission();
-        if (granted) {
-          startListening();
-        }
-      }
-      document.removeEventListener('click', initVoice);
-    }, { once: true });
+    autoStartVoice();
   </script>
 </body>
 </html>
