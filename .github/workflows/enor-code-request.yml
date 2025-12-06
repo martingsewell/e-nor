@@ -10,8 +10,14 @@ concurrency:
 
 jobs:
   implement-request:
-    # Only run on open issues with the enor-request label
-    if: contains(github.event.issue.labels.*.name, 'enor-request') && github.event.issue.state == 'open'
+    # Only run when:
+    # - Issue is opened with enor-request label, OR
+    # - The enor-request label specifically is added (not other labels like 'automated')
+    if: |
+      github.event.issue.state == 'open' && (
+        (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'enor-request')) ||
+        (github.event.action == 'labeled' && github.event.label.name == 'enor-request')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
