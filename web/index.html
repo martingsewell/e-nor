@@ -920,6 +920,7 @@
     let voiceMode = 'idle'; // 'idle', 'listening', 'conversation', 'speaking'
     let inConversation = false;
     let voiceSupported = false;
+    let micPermissionGranted = false;
 
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -927,12 +928,16 @@
       voiceSupported = true;
       recognition = new SpeechRecognition();
       recognition.continuous = true;
-      recognition.interimResults = false;
+      recognition.interimResults = true; // Get interim results for better responsiveness
       recognition.lang = 'en-GB';
 
       recognition.onresult = handleSpeechResult;
       recognition.onerror = handleSpeechError;
       recognition.onend = handleSpeechEnd;
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        micPermissionGranted = true;
+      };
     } else {
       voiceText.textContent = 'Voice not supported';
       micBtn.disabled = true;
@@ -945,13 +950,41 @@
       micBtn.classList.toggle('active', inConversation);
     }
 
-    function startListening() {
+    async function requestMicPermission() {
+      try {
+        // Request microphone permission explicitly
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop the stream immediately - we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+        micPermissionGranted = true;
+        console.log('Microphone permission granted');
+        return true;
+      } catch (e) {
+        console.error('Microphone permission denied:', e);
+        setVoiceState('idle', 'Mic denied - tap to retry');
+        return false;
+      }
+    }
+
+    async function startListening() {
       if (!voiceSupported || !recognition) return;
+
+      // First request mic permission if not granted
+      if (!micPermissionGranted) {
+        const granted = await requestMicPermission();
+        if (!granted) return;
+      }
+
       try {
         recognition.start();
         setVoiceState('listening', inConversation ? 'Listening...' : 'Say "Hey E-NOR"');
       } catch (e) {
-        // Already started
+        if (e.name === 'InvalidStateError') {
+          // Already started, that's fine
+        } else {
+          console.error('Recognition start error:', e);
+          setVoiceState('idle', 'Tap mic to start');
+        }
       }
     }
 
@@ -964,14 +997,24 @@
 
     function handleSpeechResult(event) {
       const last = event.results.length - 1;
-      const transcript = event.results[last][0].transcript.toLowerCase().trim();
-      console.log('Heard:', transcript);
+      const result = event.results[last];
+      const transcript = result[0].transcript.toLowerCase().trim();
+
+      // Only process final results
+      if (!result.isFinal) {
+        console.log('Hearing:', transcript);
+        return;
+      }
+
+      console.log('Heard (final):', transcript);
 
       if (!inConversation) {
         // Check for wake word
         if (transcript.includes('hey e-nor') || transcript.includes('hey enor') ||
             transcript.includes('hey e nor') || transcript.includes('heyeanor') ||
-            transcript.includes('a nor') || transcript.includes('enor')) {
+            transcript.includes('a nor') || transcript.includes('enor') ||
+            transcript.includes('hey nor') || transcript.includes('e-nor') ||
+            transcript.includes('eanor')) {
           startConversation();
         }
       } else {
@@ -982,16 +1025,22 @@
 
     function handleSpeechError(event) {
       console.log('Speech error:', event.error);
-      if (event.error === 'no-speech' || event.error === 'aborted') {
+      if (event.error === 'not-allowed') {
+        micPermissionGranted = false;
+        setVoiceState('idle', 'Tap mic for permission');
+      } else if (event.error === 'no-speech' || event.error === 'aborted') {
         // Restart listening
-        setTimeout(startListening, 100);
+        setTimeout(startListening, 500);
+      } else if (event.error === 'network') {
+        setVoiceState('idle', 'Network error - tap to retry');
       }
     }
 
     function handleSpeechEnd() {
+      console.log('Speech recognition ended, voiceMode:', voiceMode);
       // Restart listening unless we're speaking
       if (voiceMode !== 'speaking') {
-        setTimeout(startListening, 100);
+        setTimeout(startListening, 500);
       }
     }
 
@@ -1115,7 +1164,7 @@
       });
     }
 
-    function toggleVoiceMode() {
+    async function toggleVoiceMode() {
       if (!voiceSupported) return;
 
       if (inConversation) {
@@ -1124,6 +1173,11 @@
           endConversation();
         });
       } else {
+        // Request mic permission first if needed
+        if (!micPermissionGranted) {
+          const granted = await requestMicPermission();
+          if (!granted) return;
+        }
         // Start conversation directly
         startConversation();
       }
@@ -1148,23 +1202,32 @@
       navigator.wakeLock.request('screen').catch(() => {});
     }
 
-    // Start voice listening (need user interaction first on mobile)
-    document.addEventListener('click', function initVoice() {
-      if (voiceSupported) {
-        startListening();
-        // Load voices (needed for some browsers)
-        synthesis.getVoices();
+    // Load voices for TTS
+    if (synthesis) {
+      synthesis.getVoices();
+      // Chrome needs this event
+      speechSynthesis.onvoiceschanged = () => synthesis.getVoices();
+    }
+
+    // Show initial voice state
+    if (voiceSupported) {
+      setVoiceState('idle', 'Tap mic to enable voice');
+    }
+
+    // Request mic permission on first user interaction anywhere
+    document.addEventListener('click', async function initVoice(e) {
+      // Don't trigger on settings modal clicks
+      if (document.getElementById('settings-modal').contains(e.target)) return;
+
+      if (voiceSupported && !micPermissionGranted) {
+        console.log('First click - requesting mic permission');
+        const granted = await requestMicPermission();
+        if (granted) {
+          startListening();
+        }
       }
       document.removeEventListener('click', initVoice);
     }, { once: true });
-
-    // Also try to start immediately (works on some browsers)
-    if (voiceSupported) {
-      setTimeout(() => {
-        startListening();
-        synthesis.getVoices();
-      }, 1000);
-    }
   </script>
 </body>
 </html>
