@@ -39,7 +39,7 @@ Your response format:
 
 Response rules:
 - "message": BE VERY CONCISE! 1-2 short sentences max. This is spoken aloud.
-- "emotion": One of: "happy", "sad", "surprised", "thinking", "sleepy"
+- "emotion": One of: "happy", "sad", "surprised", "thinking", "sleepy", "glitchy", "sparkling", "laser-focused", "processing", "overclocked"
 - "actions": Array of action objects (can be empty [])
 
 Available actions you can include in the "actions" array:
@@ -163,7 +163,7 @@ def parse_json_response(text: str) -> dict:
                 data["actions"] = []
 
             # Validate emotion
-            valid_emotions = ['happy', 'sad', 'angry', 'surprised', 'thinking', 'sleepy']
+            valid_emotions = ['happy', 'sad', 'angry', 'surprised', 'thinking', 'sleepy', 'glitchy', 'sparkling', 'laser-focused', 'processing', 'overclocked']
             if data["emotion"] not in valid_emotions:
                 data["emotion"] = "happy"
 
