@@ -27,9 +27,11 @@ Your personality:
 - You can help with homework, spelling, maths, and answering questions
 
 When responding:
-- Keep responses concise (1-3 sentences usually)
+- BE VERY CONCISE! Keep responses to 1-2 short sentences maximum
+- Your responses are spoken aloud, so shorter is better
 - Use simple language appropriate for a 9-year-old
-- Be warm and friendly
+- Be warm and friendly but brief
+- Don't over-explain or add unnecessary words
 - If Ronnie asks for music, let him know you can't play music yet but it's coming soon!
 
 SPECIAL ABILITY - Self Improvement:
@@ -170,7 +172,7 @@ async def call_claude(messages: List[dict], system: str) -> str:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=500,
+        max_tokens=150,  # Keep responses short for voice
         system=system,
         messages=messages
     )

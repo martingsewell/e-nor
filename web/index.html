@@ -282,6 +282,33 @@
       cursor: not-allowed;
     }
 
+    /* Interrupt Button - shows during speech */
+    #interrupt-btn {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      background: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      z-index: 100;
+      box-shadow: 0 4px 15px rgba(255,68,68,0.5);
+      animation: pulseInterrupt 1s infinite;
+    }
+    #interrupt-btn.visible {
+      display: block;
+    }
+    @keyframes pulseInterrupt {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.05); }
+    }
+
     /* Settings Modal */
     #settings-modal {
       display: none;
@@ -568,6 +595,8 @@
     <div id="chat-messages">
       <!-- Messages will appear here -->
     </div>
+
+    <button id="interrupt-btn" onclick="interruptSpeech()">TAP TO INTERRUPT</button>
 
     <div id="chat-input-container">
       <button id="mic-btn" onclick="toggleVoiceMode()">&#127908;</button>
@@ -1226,7 +1255,9 @@
     let isSpeaking = false;
     let speechBuffer = '';
     let speechTimeout = null;
-    const SILENCE_DELAY = 1500; // Wait 1.5 seconds of silence before processing
+    let pendingAbortController = null; // For canceling requests if user keeps talking
+    let isProcessing = false; // True during API call
+    const SILENCE_DELAY = 3000; // Wait 3 seconds of silence before processing
 
     // Check if speech recognition is supported
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1370,7 +1401,17 @@
       } else {
         // In conversation mode - buffer speech and wait for silence
         if (result.isFinal) {
-          speechBuffer = transcript;
+          // If we're processing and user speaks more, cancel and concatenate
+          if (isProcessing && pendingAbortController) {
+            console.log('User spoke during processing - canceling request');
+            pendingAbortController.abort();
+            pendingAbortController = null;
+            isProcessing = false;
+            // Concatenate with previous buffer
+            speechBuffer = speechBuffer ? speechBuffer + ' ' + transcript : transcript;
+          } else {
+            speechBuffer = transcript;
+          }
           console.log('Buffered:', speechBuffer);
 
           // Clear any existing timeout
@@ -1387,9 +1428,15 @@
           }, SILENCE_DELAY);
         } else {
           // Show interim results
-          setVoiceState('conversation', `"${transcript}..."`);
+          const displayText = isProcessing ? `Adding: "${transcript}..."` : `"${transcript}..."`;
+          setVoiceState('conversation', displayText);
           // Reset the silence timer on interim results
           if (speechTimeout) clearTimeout(speechTimeout);
+
+          // If processing and user starts talking, prepare to cancel
+          if (isProcessing && pendingAbortController) {
+            console.log('User starting to speak during processing...');
+          }
         }
       }
     }
@@ -1446,10 +1493,13 @@
       // Add user message to chat
       addMessage(text, 'user');
 
-      // Show thinking
-      setVoiceState('conversation', 'Thinking...');
+      // Show thinking - but KEEP listening so user can add more
+      setVoiceState('conversation', 'Thinking... (keep talking to add more)');
       applyEmotion('thinking');
-      stopListening();
+
+      // Create abort controller for this request
+      pendingAbortController = new AbortController();
+      isProcessing = true;
 
       try {
         const response = await fetch('/api/chat', {
@@ -1458,10 +1508,13 @@
           body: JSON.stringify({
             message: text,
             conversation_id: conversationId
-          })
+          }),
+          signal: pendingAbortController.signal
         });
 
         const data = await response.json();
+        isProcessing = false;
+        pendingAbortController = null;
 
         // Add to chat
         addMessage(data.response, 'enor');
@@ -1486,6 +1539,17 @@
         }
 
       } catch (error) {
+        isProcessing = false;
+        pendingAbortController = null;
+
+        // Check if this was an intentional abort (user kept talking)
+        if (error.name === 'AbortError') {
+          console.log('Request canceled - user is still talking');
+          setVoiceState('conversation', 'Listening...');
+          // Don't speak error, just let the new combined text be processed
+          return;
+        }
+
         console.error('Chat error:', error);
         await speak("Sorry, my brain got confused. Can you try again?");
         applyEmotion('sad');
@@ -1510,7 +1574,11 @@
         // Cancel any ongoing speech
         synthesis.cancel();
 
-        setVoiceState('speaking', 'Speaking... (tap to interrupt)');
+        setVoiceState('speaking', 'Speaking...');
+
+        // Show interrupt button
+        const interruptBtn = document.getElementById('interrupt-btn');
+        interruptBtn.classList.add('visible');
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.0;
@@ -1531,6 +1599,8 @@
 
         utterance.onend = () => {
           isSpeaking = false;
+          // Hide interrupt button
+          interruptBtn.classList.remove('visible');
           // Wait a moment before resuming listening to avoid catching echo
           setTimeout(() => {
             if (inConversation && !isSpeaking) {
@@ -1547,6 +1617,7 @@
         utterance.onerror = (e) => {
           console.log('Speech error:', e);
           isSpeaking = false;
+          interruptBtn.classList.remove('visible');
           resolve();
         };
 
@@ -1558,6 +1629,8 @@
       if (isSpeaking && synthesis) {
         synthesis.cancel();
         isSpeaking = false;
+        // Hide interrupt button
+        document.getElementById('interrupt-btn').classList.remove('visible');
         if (inConversation) {
           setVoiceState('conversation', 'Listening...');
           setTimeout(() => startListening(), 300);
