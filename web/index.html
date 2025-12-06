@@ -34,21 +34,74 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.5s ease-out;
+      transition: opacity 1s ease-out;
     }
     #startup-overlay.hidden {
       opacity: 0;
       pointer-events: none;
     }
+
+    /* Boot sequence phases */
     #startup-face {
       opacity: 0;
-      transform: translateY(100px);
-      transition: all 1s ease-out;
+      transform: scale(0.8);
+      transition: all 1.5s ease-out;
+    }
+    #startup-face.phase1 {
+      opacity: 0.3;
+      transform: scale(0.9);
+    }
+    #startup-face.phase2 {
+      opacity: 0.7;
+      transform: scale(0.95);
     }
     #startup-face.visible {
       opacity: 1;
-      transform: translateY(0);
+      transform: scale(1);
     }
+
+    /* Eye flicker animation for boot effect */
+    @keyframes eyeFlicker {
+      0%, 100% { opacity: 1; }
+      10% { opacity: 0.3; }
+      20% { opacity: 0.8; }
+      30% { opacity: 0.2; }
+      40% { opacity: 0.9; }
+      50% { opacity: 0.4; }
+      60% { opacity: 1; }
+      70% { opacity: 0.5; }
+      80% { opacity: 0.9; }
+      90% { opacity: 0.7; }
+    }
+
+    #startup-face.flickering .eye {
+      animation: eyeFlicker 0.8s ease-in-out;
+    }
+
+    /* Ring pulse animation */
+    @keyframes ringPulse {
+      0% { stroke-opacity: 0.2; }
+      50% { stroke-opacity: 0.8; }
+      100% { stroke-opacity: 0.4; }
+    }
+
+    #startup-face .ring {
+      animation: ringPulse 2s ease-in-out infinite;
+    }
+
+    /* Gentle eye blink during wake */
+    @keyframes wakeBlink {
+      0% { transform: scaleY(0.1); }
+      50% { transform: scaleY(1); }
+      60% { transform: scaleY(0.1); }
+      100% { transform: scaleY(1); }
+    }
+
+    #startup-face.waking .eye-group {
+      transform-origin: center;
+      animation: wakeBlink 1.5s ease-in-out forwards;
+    }
+
     #startup-name {
       font-size: 28px;
       font-weight: bold;
@@ -58,21 +111,40 @@
       margin-top: 20px;
       opacity: 0;
       transform: translateY(20px);
-      transition: all 0.8s ease-out 0.5s;
+      transition: all 1.2s ease-out;
     }
     #startup-name.visible {
       opacity: 1;
       transform: translateY(0);
     }
+    #startup-name.glow {
+      animation: nameGlow 2s ease-in-out infinite;
+    }
+    @keyframes nameGlow {
+      0%, 100% { text-shadow: 0 0 20px #00ffff; }
+      50% { text-shadow: 0 0 40px #00ffff, 0 0 60px #00ffff; }
+    }
+
     #startup-status {
       margin-top: 30px;
       color: #666;
       font-size: 14px;
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.5s, color 0.5s;
     }
     #startup-status.visible {
       opacity: 1;
+    }
+    #startup-status.ready {
+      color: #00ffff;
+    }
+
+    /* Loading dots animation */
+    @keyframes loadingDots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60% { content: '...'; }
+      80%, 100% { content: ''; }
     }
 
     /* Top section: Face */
@@ -86,6 +158,11 @@
       justify-content: center;
       overflow: hidden;
       cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.8s ease-out;
+    }
+    #face-container.visible {
+      opacity: 1;
     }
     /* When chat is visible, face takes less space */
     body.chat-visible #face-container {
@@ -623,12 +700,17 @@
   <!-- Startup Animation Overlay -->
   <div id="startup-overlay">
     <svg id="startup-face" width="200" height="200" viewBox="0 0 400 400">
-      <circle cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
-      <ellipse cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
-      <ellipse cx="145" cy="145" rx="12" ry="12" fill="#000"/>
-      <ellipse cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
-      <ellipse cx="265" cy="145" rx="12" ry="12" fill="#000"/>
-      <path d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <!-- Ring that pulses -->
+      <circle class="ring" cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
+      <!-- Eyes that can flicker and blink -->
+      <g class="eye-group">
+        <ellipse class="eye" cx="140" cy="140" rx="35" ry="30" fill="#00ffff"/>
+        <ellipse class="pupil" cx="145" cy="145" rx="12" ry="12" fill="#000"/>
+        <ellipse class="eye" cx="260" cy="140" rx="35" ry="30" fill="#00ffff"/>
+        <ellipse class="pupil" cx="265" cy="145" rx="12" ry="12" fill="#000"/>
+      </g>
+      <!-- Mouth -->
+      <path class="mouth" d="M 120 220 Q 200 280 280 220" stroke="#00ffff" stroke-width="6" stroke-linecap="round" fill="none"/>
     </svg>
     <div id="startup-name">E-NOR</div>
     <div id="startup-status">Waking up...</div>
@@ -1798,82 +1880,139 @@
       });
     }
 
-    // Run the startup sequence
+    // Run the startup sequence (~10 seconds of animation while initializing)
     async function runStartup() {
       console.log('Starting E-NOR boot sequence...');
 
-      // Step 1: Show face rising up
-      startupStatus.classList.add('visible');
-      await new Promise(r => setTimeout(r, 300));
-      startupFace.classList.add('visible');
-
-      // Step 2: Show name
-      await new Promise(r => setTimeout(r, 500));
-      startupName.classList.add('visible');
-
-      // Step 3: Connect WebSocket while animating
-      connect();
-
-      // Step 4: Wait for voices to load
-      startupStatus.textContent = 'Loading voice...';
-      await waitForVoices();
-      console.log('Voices loaded:', voicesLoaded);
-
-      // Step 5: Check mic permission
-      startupStatus.textContent = 'Checking microphone...';
+      // Track initialization tasks (run in parallel with animation)
       let micReady = false;
-      if (voiceSupported) {
-        try {
-          const permission = await navigator.permissions.query({ name: 'microphone' });
-          if (permission.state === 'granted') {
-            micPermissionGranted = true;
-            micReady = true;
-            console.log('Mic permission already granted');
-          }
-        } catch (err) {
-          console.log('Permissions API not supported');
-        }
-      }
-
-      // Step 6: Keep screen awake
-      if ('wakeLock' in navigator) {
-        navigator.wakeLock.request('screen').catch(() => {});
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') {
-            navigator.wakeLock.request('screen').catch(() => {});
-          }
-        });
-      }
-
-      // Step 7: Check if chat is ready
       let chatReady = false;
-      try {
-        const response = await fetch('/api/chat/status');
-        const data = await response.json();
-        chatReady = data.ready;
-      } catch (err) {
-        console.log('Could not check chat status');
-      }
+      let initComplete = false;
 
-      // Step 8: Wait a moment for everything to settle
-      startupStatus.textContent = 'Ready!';
+      // Start all initialization tasks in background
+      const initPromise = (async () => {
+        console.log('Starting background initialization...');
+
+        // Connect WebSocket
+        connect();
+
+        // Wait for voices to load
+        await waitForVoices();
+        console.log('Voices loaded:', voicesLoaded);
+
+        // Check mic permission
+        if (voiceSupported) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'microphone' });
+            if (permission.state === 'granted') {
+              micPermissionGranted = true;
+              micReady = true;
+              console.log('Mic permission already granted');
+            }
+          } catch (err) {
+            console.log('Permissions API not supported');
+          }
+        }
+
+        // Keep screen awake
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen').catch(() => {});
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+              navigator.wakeLock.request('screen').catch(() => {});
+            }
+          });
+        }
+
+        // Check if chat is ready
+        try {
+          const response = await fetch('/api/chat/status');
+          const data = await response.json();
+          chatReady = data.ready;
+          console.log('Chat ready:', chatReady);
+        } catch (err) {
+          console.log('Could not check chat status');
+        }
+
+        initComplete = true;
+        console.log('Background initialization complete');
+      })();
+
+      // ===== PHASE 1: Initial boot (0-2s) =====
+      startupStatus.textContent = 'Initializing...';
+      startupStatus.classList.add('visible');
       await new Promise(r => setTimeout(r, 500));
 
-      // Step 9: Hide overlay
+      // Face starts to appear dimly
+      startupFace.classList.add('phase1');
+      await new Promise(r => setTimeout(r, 1500));
+
+      // ===== PHASE 2: Systems coming online (2-4s) =====
+      startupStatus.textContent = 'Loading systems...';
+      startupFace.classList.remove('phase1');
+      startupFace.classList.add('phase2');
+      startupFace.classList.add('flickering');
+      await new Promise(r => setTimeout(r, 1000));
+      startupFace.classList.remove('flickering');
+      await new Promise(r => setTimeout(r, 1000));
+
+      // ===== PHASE 3: Face fully visible (4-6s) =====
+      startupStatus.textContent = 'Activating sensors...';
+      startupFace.classList.remove('phase2');
+      startupFace.classList.add('visible');
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Eyes "wake up" with blink
+      startupFace.classList.add('waking');
+      await new Promise(r => setTimeout(r, 1500));
+      startupFace.classList.remove('waking');
+
+      // ===== PHASE 4: Name reveal (6-8s) =====
+      startupStatus.textContent = 'Personality loaded...';
+      startupName.classList.add('visible');
+      await new Promise(r => setTimeout(r, 1000));
+      startupName.classList.add('glow');
+      await new Promise(r => setTimeout(r, 1000));
+
+      // ===== PHASE 5: Final checks (8-10s) =====
+      startupStatus.textContent = 'Running diagnostics...';
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Wait for init to complete if it hasn't already
+      await initPromise;
+
+      // Show ready status
+      startupStatus.textContent = 'All systems online!';
+      startupStatus.classList.add('ready');
+      await new Promise(r => setTimeout(r, 1000));
+
+      // ===== PHASE 6: Transition to main interface =====
+      // Show the main face container as the overlay fades
+      document.getElementById('face-container').classList.add('visible');
       startupOverlay.classList.add('hidden');
       startupComplete = true;
 
-      // Step 10: Speak intro and start listening
+      // Wait for fade animation to complete
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Speak the greeting
+      console.log('About to speak greeting. chatReady:', chatReady, 'voicesLoaded:', voicesLoaded);
       if (chatReady && voicesLoaded) {
-        // Small delay to ensure overlay is hidden
-        await new Promise(r => setTimeout(r, 300));
-        await speak("Hey! I'm E-NOR. Say my name when you want to chat!");
-        addMessage("Hey! I'm E-NOR. Say 'Hey E-NOR' when you want to chat!", 'enor');
+        try {
+          await speak("Hey! I'm E-NOR, your robot friend. Just say my name when you want to chat!");
+          addMessage("Hey! I'm E-NOR, your robot friend. Just say 'Hey E-NOR' when you want to chat!", 'enor');
+        } catch (err) {
+          console.error('Failed to speak greeting:', err);
+          addMessage("Hey! I'm E-NOR, your robot friend. Just say 'Hey E-NOR' when you want to chat!", 'enor');
+        }
       } else if (!chatReady) {
         addMessage("Tap the gear icon to add my Claude API key so I can chat with you!", 'system');
+      } else if (!voicesLoaded) {
+        console.log('Voices not loaded, skipping speech');
+        addMessage("Hey! I'm E-NOR, your robot friend. Just say 'Hey E-NOR' when you want to chat!", 'enor');
       }
 
-      // Step 11: Start listening for wake word
+      // Start listening for wake word
       if (micReady) {
         startListening();
         setVoiceState('listening', 'Say "Hey E-NOR"');
