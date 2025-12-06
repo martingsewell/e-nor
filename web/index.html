@@ -2482,22 +2482,78 @@
 
         // Update panel content
         if (data.requests && data.requests.length > 0) {
-          pendingList.innerHTML = data.requests.map(req => {
-            const isCompleted = req.status === 'completed';
-            const timeAgo = getTimeAgo(req.created_at);
-            const issueLink = req.issue_number
-              ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
-              : '';
+          const pendingItems = data.requests.filter(req => req.status === 'pending' || req.status === 'in_progress');
+          const completedItems = data.requests.filter(req => req.status === 'completed');
+          const failedItems = data.requests.filter(req => req.status === 'failed');
 
-            return `
-              <div class="pending-item ${isCompleted ? 'completed' : ''}">
-                <div class="title">${escapeHtml(req.title)}</div>
-                <span class="status">${req.status}</span>
-                ${issueLink}
-                <div class="time">${timeAgo}</div>
-              </div>
-            `;
-          }).join('');
+          let html = '';
+          
+          // Show pending/in-progress items first
+          if (pendingItems.length > 0) {
+            html += pendingItems.map(req => {
+              const timeAgo = getTimeAgo(req.created_at);
+              const issueLink = req.issue_number
+                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                : '';
+
+              return `
+                <div class="pending-item">
+                  <div class="title">${escapeHtml(req.title)}</div>
+                  <span class="status">${req.status}</span>
+                  ${issueLink}
+                  <div class="time">${timeAgo}</div>
+                </div>
+              `;
+            }).join('');
+          }
+          
+          // Show completed items in a separate section
+          if (completedItems.length > 0) {
+            if (pendingItems.length > 0) {
+              html += '<hr style="margin: 16px 0; border: 1px solid rgba(255,255,255,0.2);">';
+              html += '<div style="color: #888; font-size: 12px; margin-bottom: 8px; text-align: center;">Recently Completed</div>';
+            }
+            html += completedItems.map(req => {
+              const timeAgo = getTimeAgo(req.created_at);
+              const issueLink = req.issue_number
+                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                : '';
+
+              return `
+                <div class="pending-item completed">
+                  <div class="title">${escapeHtml(req.title)}</div>
+                  <span class="status">✅ ${req.status}</span>
+                  ${issueLink}
+                  <div class="time">${timeAgo}</div>
+                </div>
+              `;
+            }).join('');
+          }
+
+          // Show failed items 
+          if (failedItems.length > 0) {
+            if (pendingItems.length > 0 || completedItems.length > 0) {
+              html += '<hr style="margin: 16px 0; border: 1px solid rgba(255,255,255,0.2);">';
+              html += '<div style="color: #888; font-size: 12px; margin-bottom: 8px; text-align: center;">Failed Requests</div>';
+            }
+            html += failedItems.map(req => {
+              const timeAgo = getTimeAgo(req.created_at);
+              const issueLink = req.issue_number
+                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                : '';
+
+              return `
+                <div class="pending-item" style="border-left: 3px solid #ff4444;">
+                  <div class="title">${escapeHtml(req.title)}</div>
+                  <span class="status" style="color: #ff4444;">❌ ${req.status}</span>
+                  ${issueLink}
+                  <div class="time">${timeAgo}</div>
+                </div>
+              `;
+            }).join('');
+          }
+
+          pendingList.innerHTML = html;
         } else {
           pendingList.innerHTML = '<div id="pending-empty">No code requests yet.<br><br>Ask E-NOR for a new feature!</div>';
         }

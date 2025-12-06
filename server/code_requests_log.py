@@ -4,6 +4,8 @@ Tracks recent code requests to prevent duplicates and provide context
 """
 
 import json
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 from pathlib import Path
@@ -175,10 +177,54 @@ def get_requests_for_prompt() -> str:
     return text
 
 
+def check_github_issue_status(issue_number: int) -> Optional[str]:
+    """Check if a GitHub issue is closed. Returns 'completed' if closed, None if open or on error."""
+    try:
+        from .secrets import get_secret
+        token = get_secret("GITHUB_TOKEN")
+        if not token:
+            return None  # Can't check without token
+        
+        url = f"https://api.github.com/repos/martingsewell/e-nor/issues/{issue_number}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "E-NOR-Robot"
+        }
+        
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return 'completed' if data.get('state') == 'closed' else None
+    except (urllib.error.HTTPError, Exception):
+        # If we can't check (network issue, API error, etc.), don't update
+        return None
+
+
+def sync_github_status(requests: List[dict]) -> bool:
+    """Check GitHub status for pending requests and update if needed. Returns True if any changes made."""
+    changed = False
+    for req in requests:
+        # Only check pending/in-progress requests that have issue numbers
+        if req.get("status") in ["pending", "in_progress"] and req.get("issue_number"):
+            github_status = check_github_issue_status(req["issue_number"])
+            if github_status == 'completed' and req.get("status") != "completed":
+                req["status"] = "completed"
+                req["updated_at"] = datetime.now().isoformat()
+                changed = True
+                print(f"Auto-updated status for issue #{req['issue_number']} to completed")
+    return changed
+
+
 def get_all_requests() -> List[dict]:
-    """Get all requests (for UI display)"""
+    """Get all requests (for UI display), auto-syncing with GitHub status"""
     requests = load_requests()
     requests = cleanup_old_requests(requests)
+    
+    # Auto-sync with GitHub status
+    if sync_github_status(requests):
+        save_requests(requests)  # Save if any changes were made
+    
     save_requests(requests)  # Save cleaned up list
     return requests
 
