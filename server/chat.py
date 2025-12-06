@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from .secrets import get_secret, has_secret
 from .memories import get_memories_for_prompt, save_memory, update_memory, forget_memory
+from .code_requests_log import find_duplicate, add_request, get_requests_for_prompt
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -106,9 +107,10 @@ You are speaking directly to Ronnie unless told otherwise."""
 
 
 def get_system_prompt() -> str:
-    """Get the full system prompt with memories included"""
+    """Get the full system prompt with memories and pending requests included"""
     memories = get_memories_for_prompt()
-    return SYSTEM_PROMPT_BASE + memories
+    pending_requests = get_requests_for_prompt()
+    return SYSTEM_PROMPT_BASE + memories + pending_requests
 
 
 class ChatMessage(BaseModel):
@@ -224,6 +226,8 @@ async def handle_actions(actions: List[dict]) -> dict:
                 results["code_requests"].append(code_result)
                 if code_result.get("success"):
                     print(f"✅ Created issue #{code_result['issue_number']}")
+                elif code_result.get("duplicate"):
+                    print(f"⚠️ Duplicate request detected: {code_result.get('message')}")
                 else:
                     print(f"❌ Failed to create issue: {code_result.get('message', 'unknown error')}")
 
@@ -237,6 +241,24 @@ async def submit_code_request(title: str, description: str) -> dict:
 
     if not has_secret("GITHUB_TOKEN"):
         return {"success": False, "message": "GitHub token not configured"}
+
+    # Check for duplicate requests
+    existing = find_duplicate(title, description)
+    if existing:
+        issue_num = existing.get("issue_number")
+        if issue_num:
+            return {
+                "success": False,
+                "duplicate": True,
+                "message": f"I already requested that! It's Issue #{issue_num}.",
+                "existing_issue": issue_num
+            }
+        else:
+            return {
+                "success": False,
+                "duplicate": True,
+                "message": "I already requested something like that recently!"
+            }
 
     try:
         # Build the issue body
@@ -272,6 +294,15 @@ Please implement this feature request:
             body=body,
             labels=["enor-request", "automated"]
         )
+
+        # Log the request to prevent duplicates
+        add_request(
+            title=title,
+            description=description,
+            issue_number=issue["number"],
+            issue_url=issue["html_url"]
+        )
+
         return {"success": True, "issue_number": issue["number"], "url": issue["html_url"]}
     except Exception as e:
         print(f"Failed to create code request: {e}")
