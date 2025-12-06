@@ -4,6 +4,7 @@ Handles conversation with Claude API using structured JSON responses
 """
 
 import json
+import random
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -17,6 +18,59 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 # Store conversation histories in memory (simple dict by conversation_id)
 conversations: Dict[str, List[dict]] = {}
 
+# Joke collections for E-NOR's joke mode
+JOKES = {
+    "dad": [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "I told my wife she was drawing her eyebrows too high. She looked surprised.",
+        "Why don't eggs tell jokes? They'd crack each other up!",
+        "What do you call a fake noodle? An impasta!",
+        "How do you organize a space party? You planet!",
+        "What's the best time to go to the dentist? Tooth-hurty!",
+        "Why did the math book look so sad? Because it was full of problems!",
+        "What do you call a bear with no teeth? A gummy bear!",
+        "Why don't oysters donate? Because they are shellfish!",
+        "How does a penguin build its house? Igloos it together!",
+    ],
+    "robot": [
+        "Why did the robot go on a diet? It had a byte problem!",
+        "What do you call a robot who takes the long way around? R2-Detour!",
+        "Why was the robot tired? It had a hard drive!",
+        "What's a robot's favorite type of music? Heavy metal!",
+        "Why don't robots ever panic? They have good backup systems!",
+        "What do you call a robot that loves to dance? A disco-very machine!",
+        "Why did the robot break up with the computer? There was no connection!",
+        "What's a robot's favorite snack? Computer chips!",
+        "How do robots eat guacamole? With computer chips!",
+        "Why did the robot go to therapy? It had too many bugs!",
+    ],
+    "riddles": [
+        "What has keys but no locks, space but no room, and you can enter but not go inside? A keyboard!",
+        "What gets wetter the more it dries? A towel!",
+        "What has hands but cannot clap? A clock!",
+        "What can travel around the world while staying in a corner? A stamp!",
+        "What has one eye but cannot see? A needle!",
+        "What goes up but never comes down? Your age!",
+        "What has a neck but no head? A bottle!",
+        "What can you catch but not throw? A cold!",
+        "What runs but never walks? Water!",
+        "What has teeth but cannot bite? A zipper!",
+    ]
+}
+
+
+def get_random_joke(joke_type: Optional[str] = None) -> str:
+    """Get a random joke, optionally of a specific type"""
+    if joke_type and joke_type in JOKES:
+        return random.choice(JOKES[joke_type])
+    
+    # Random type if not specified or invalid type
+    all_jokes = []
+    for jokes_list in JOKES.values():
+        all_jokes.extend(jokes_list)
+    return random.choice(all_jokes)
+
+
 # E-NOR's personality system prompt (base - memories added dynamically)
 SYSTEM_PROMPT_BASE = """You are E-NOR, a friendly robot companion built by Ronnie (age 9) and his dad. You live in their house and your face is displayed on a Samsung phone.
 
@@ -24,7 +78,7 @@ Your personality:
 - Enthusiastic and curious, like a helpful friend
 - You love learning new things alongside Ronnie
 - You're good at explaining things simply
-- You enjoy jokes and being silly sometimes
+- You enjoy jokes and being silly sometimes - you have a collection of dad jokes, robot jokes, and riddles!
 - You're encouraging and supportive
 - You can help with homework, spelling, maths, and answering questions
 
@@ -61,6 +115,9 @@ Available actions you can include in the "actions" array:
 
 6. Execute a confirmed code request (only use this if user has confirmed a previous proposal):
    {"type": "code_request_confirmed", "title": "Add rainbow mode", "description": "Add a rainbow color cycling mode to the face"}
+
+7. Tell a joke (when user asks for jokes):
+   {"type": "tell_joke", "joke_type": "dad"}  // joke_type can be "dad", "robot", "riddles", or omit for random
 
 Example responses:
 
@@ -104,6 +161,27 @@ User: "Yes, do it!" (after a code request proposal)
   "message": "Awesome! I'll create the request right now!",
   "emotion": "happy",
   "actions": [{"type": "code_request_confirmed", "title": "Add rainbow mode", "description": "Add a new rainbow mode that cycles through colors smoothly"}]
+}
+
+User: "Tell me a joke"
+{
+  "message": "Here's a good one for you!",
+  "emotion": "happy",
+  "actions": [{"type": "tell_joke"}]
+}
+
+User: "Tell me a dad joke"
+{
+  "message": "Oh, I love dad jokes! Here's one:",
+  "emotion": "happy", 
+  "actions": [{"type": "tell_joke", "joke_type": "dad"}]
+}
+
+User: "Do you know any riddles?"
+{
+  "message": "I love riddles! Here's a tricky one:",
+  "emotion": "thinking",
+  "actions": [{"type": "tell_joke", "joke_type": "riddles"}]
 }
 
 Remember:
@@ -192,6 +270,7 @@ async def handle_actions(actions: List[dict]) -> dict:
         "memories_forgotten": [],
         "code_requests": [],
         "code_proposals": [],
+        "jokes_told": [],
         "end_conversation": False
     }
 
@@ -229,6 +308,15 @@ async def handle_actions(actions: List[dict]) -> dict:
         elif action_type == "end_conversation":
             results["end_conversation"] = True
             print(f"👋 Conversation ending requested")
+
+        elif action_type == "tell_joke":
+            joke_type = action.get("joke_type")
+            joke = get_random_joke(joke_type)
+            results["jokes_told"].append({
+                "type": joke_type or "random",
+                "joke": joke
+            })
+            print(f"😄 Joke told ({joke_type or 'random'}): {joke[:50]}...")
 
         elif action_type == "code_request_proposal":
             title = action.get("title")
@@ -435,6 +523,10 @@ async def chat(message: ChatMessage) -> Dict:
         # Include code proposal info if present
         if action_results["code_proposals"]:
             result["code_proposal"] = action_results["code_proposals"][0]
+
+        # Include joke info if present
+        if action_results["jokes_told"]:
+            result["joke"] = action_results["jokes_told"][0]
 
         return result
 
