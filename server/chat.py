@@ -56,8 +56,11 @@ Available actions you can include in the "actions" array:
 4. End the conversation (go back to sleep/wake word mode):
    {"type": "end_conversation"}
 
-5. Request a code change to yourself:
-   {"type": "code_request", "title": "Add rainbow mode", "description": "Add a rainbow color cycling mode to the face"}
+5. Propose a code change (describe what you want to add/change and ask for confirmation):
+   {"type": "code_request_proposal", "title": "Add rainbow mode", "description": "Add a rainbow color cycling mode to the face"}
+
+6. Execute a confirmed code request (only use this if user has confirmed a previous proposal):
+   {"type": "code_request_confirmed", "title": "Add rainbow mode", "description": "Add a rainbow color cycling mode to the face"}
 
 Example responses:
 
@@ -91,9 +94,16 @@ User: "I'm done talking"
 
 User: "Can you add a rainbow mode?"
 {
-  "message": "Ooh, rainbow mode sounds awesome! Let me ask my code brain to add that!",
+  "message": "Ooh, rainbow mode sounds awesome! I want to add a rainbow color cycling mode that smoothly transitions through colors on my face. Should I ask my code brain to add that?",
   "emotion": "surprised",
-  "actions": [{"type": "code_request", "title": "Add rainbow mode", "description": "Add a new rainbow mode that cycles through colors smoothly"}]
+  "actions": [{"type": "code_request_proposal", "title": "Add rainbow mode", "description": "Add a new rainbow mode that cycles through colors smoothly"}]
+}
+
+User: "Yes, do it!" (after a code request proposal)
+{
+  "message": "Awesome! I'll create the request right now!",
+  "emotion": "happy",
+  "actions": [{"type": "code_request_confirmed", "title": "Add rainbow mode", "description": "Add a new rainbow mode that cycles through colors smoothly"}]
 }
 
 Remember:
@@ -102,6 +112,7 @@ Remember:
 - Use actions appropriately
 - Only remember NEW facts not already in your memory
 - If Ronnie asks for music, tell him it's coming soon
+- IMPORTANT: For code requests, ALWAYS use "code_request_proposal" first to describe what you want to add/change and ask for confirmation. Only use "code_request_confirmed" if the user has already confirmed a proposal.
 
 You are speaking directly to Ronnie unless told otherwise."""
 
@@ -180,6 +191,7 @@ async def handle_actions(actions: List[dict]) -> dict:
         "memories_updated": [],
         "memories_forgotten": [],
         "code_requests": [],
+        "code_proposals": [],
         "end_conversation": False
     }
 
@@ -218,7 +230,20 @@ async def handle_actions(actions: List[dict]) -> dict:
             results["end_conversation"] = True
             print(f"👋 Conversation ending requested")
 
-        elif action_type == "code_request":
+        elif action_type == "code_request_proposal":
+            title = action.get("title")
+            description = action.get("description")
+            if title and description:
+                proposal_result = {
+                    "type": "proposal",
+                    "title": title,
+                    "description": description,
+                    "message": f"I want to add: {description}. Say 'yes' to create the request!"
+                }
+                results["code_proposals"].append(proposal_result)
+                print(f"💡 Code proposal: {title} - {description}")
+
+        elif action_type == "code_request_confirmed":
             title = action.get("title")
             description = action.get("description")
             if title and description:
@@ -226,6 +251,20 @@ async def handle_actions(actions: List[dict]) -> dict:
                 results["code_requests"].append(code_result)
                 if code_result.get("success"):
                     print(f"✅ Created issue #{code_result['issue_number']}")
+                elif code_result.get("duplicate"):
+                    print(f"⚠️ Duplicate request detected: {code_result.get('message')}")
+                else:
+                    print(f"❌ Failed to create issue: {code_result.get('message', 'unknown error')}")
+
+        # Legacy support for direct code requests (will be phased out)
+        elif action_type == "code_request":
+            title = action.get("title")
+            description = action.get("description")
+            if title and description:
+                code_result = await submit_code_request(title, description)
+                results["code_requests"].append(code_result)
+                if code_result.get("success"):
+                    print(f"✅ Created issue #{code_result['issue_number']} (legacy flow)")
                 elif code_result.get("duplicate"):
                     print(f"⚠️ Duplicate request detected: {code_result.get('message')}")
                 else:
@@ -392,6 +431,10 @@ async def chat(message: ChatMessage) -> Dict:
         # Include code request info if present
         if action_results["code_requests"]:
             result["code_request"] = action_results["code_requests"][0]
+
+        # Include code proposal info if present
+        if action_results["code_proposals"]:
+            result["code_proposal"] = action_results["code_proposals"][0]
 
         return result
 
