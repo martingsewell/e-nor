@@ -194,6 +194,20 @@
       25% { transform: translateX(-5px) scale(1.05); }
       75% { transform: translateX(5px) scale(1.05); }
     }
+    
+    #emotion-mode {
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff;
+      margin-top: 5px;
+      opacity: 0.8;
+      text-transform: uppercase;
+    }
+    #emotion-mode.disco-shake {
+      animation: discoShake 0.3s ease-in-out infinite;
+    }
 
     /* Status and Settings */
     #status {
@@ -1072,6 +1086,7 @@
     </svg>
 
     <div id="name">E-NOR</div>
+    <div id="emotion-mode">Happy Mode</div>
   </div>
 
   <!-- Bottom: Chat -->
@@ -1079,13 +1094,18 @@
     <div id="quick-actions">
       <button class="quick-btn" onclick="setEmotion('happy')">Happy</button>
       <button class="quick-btn" onclick="setEmotion('sad')">Sad</button>
+      <button class="quick-btn" onclick="setEmotion('excited')">Excited</button>
       <button class="quick-btn" onclick="setEmotion('surprised')">Surprised</button>
       <button class="quick-btn" onclick="setEmotion('thinking')">Thinking</button>
+      <button class="quick-btn" onclick="setEmotion('cool')">Cool</button>
       <button class="quick-btn" onclick="setEmotion('glitchy')">Glitchy</button>
       <button class="quick-btn" onclick="setEmotion('sparkling')">Sparkling</button>
       <button class="quick-btn" onclick="setEmotion('laser-focused')">Laser Focus</button>
       <button class="quick-btn" onclick="setEmotion('processing')">Processing</button>
       <button class="quick-btn" onclick="setEmotion('overclocked')">Overclocked</button>
+      <button class="quick-btn" onclick="setEmotion('energetic')">Energetic</button>
+      <button class="quick-btn" onclick="setEmotion('mysterious')">Mysterious</button>
+      <button class="quick-btn" onclick="setEmotion('mischievous')">Mischievous</button>
       <button class="quick-btn" onclick="toggleDisco()" id="disco-btn">DISCO</button>
     </div>
 
@@ -1354,18 +1374,136 @@
 
     // ==================== Emotions ====================
     const emotions = {
-      happy: { eyeH: 30, eyeY: 140, pupilY: 145, mouth: "M 120 220 Q 200 280 280 220", browAngle: 0, color: "#00ffff" },
-      sad: { eyeH: 20, eyeY: 150, pupilY: 155, mouth: "M 130 250 Q 200 210 270 250", browAngle: 15, color: "#6688ff" },
-      angry: { eyeH: 20, eyeY: 145, pupilY: 150, mouth: "M 140 250 L 200 240 L 260 250", browAngle: -20, color: "#ff4444" },
-      surprised: { eyeH: 45, eyeY: 135, pupilY: 150, mouth: "M 170 230 A 30 30 0 1 1 230 230 A 30 30 0 1 1 170 230", browAngle: 0, color: "#ffff00" },
-      thinking: { eyeH: 25, eyeY: 145, pupilY: 150, mouth: "M 150 240 Q 200 240 220 235", browAngle: 10, color: "#aa88ff" },
-      sleepy: { eyeH: 8, eyeY: 155, pupilY: 155, mouth: "M 160 240 Q 200 250 240 240", browAngle: 5, color: "#88aacc" },
-      // New robot-specific emotions
-      glitchy: { eyeH: 15, eyeY: 135, pupilY: 140, mouth: "M 130 240 L 200 235 L 270 245 L 190 250 L 260 240", browAngle: -5, color: "#ff00ff" },
-      sparkling: { eyeH: 35, eyeY: 138, pupilY: 143, mouth: "M 120 225 Q 160 215 200 225 Q 240 215 280 225", browAngle: -8, color: "#00ffaa" },
-      "laser-focused": { eyeH: 12, eyeY: 145, pupilY: 148, mouth: "M 180 245 L 220 245", browAngle: -15, color: "#ff3300" },
-      processing: { eyeH: 18, eyeY: 148, pupilY: 152, mouth: "M 160 245 Q 180 240 200 245 Q 220 240 240 245", browAngle: 8, color: "#3366ff" },
-      overclocked: { eyeH: 40, eyeY: 132, pupilY: 147, mouth: "M 110 215 Q 200 270 290 215", browAngle: -12, color: "#ffaa00" }
+      happy: { 
+        eyeH: 30, eyeY: 140, pupilY: 145, 
+        mouth: "M 120 220 Q 200 280 280 220", 
+        browAngle: 0, 
+        colors: ["#00ffff", "#00ff88", "#44ffaa"], 
+        background: "linear-gradient(45deg, #1a4a5a, #2a6a4a)",
+        name: "Happy"
+      },
+      sad: { 
+        eyeH: 20, eyeY: 150, pupilY: 155, 
+        mouth: "M 130 250 Q 200 210 270 250", 
+        browAngle: 15, 
+        colors: ["#6688ff", "#4466cc", "#88aaff"], 
+        background: "linear-gradient(45deg, #2a2a4a, #3a3a6a)",
+        name: "Sad"
+      },
+      angry: { 
+        eyeH: 20, eyeY: 145, pupilY: 150, 
+        mouth: "M 140 250 L 200 240 L 260 250", 
+        browAngle: -20, 
+        colors: ["#ff4444", "#ff2222", "#ff6666"], 
+        background: "linear-gradient(45deg, #4a2a2a, #6a3a3a)",
+        name: "Angry"
+      },
+      surprised: { 
+        eyeH: 45, eyeY: 135, pupilY: 150, 
+        mouth: "M 170 230 A 30 30 0 1 1 230 230 A 30 30 0 1 1 170 230", 
+        browAngle: 0, 
+        colors: ["#ffff00", "#ffdd00", "#ffff44"], 
+        background: "linear-gradient(45deg, #4a4a2a, #6a6a3a)",
+        name: "Surprised"
+      },
+      thinking: { 
+        eyeH: 25, eyeY: 145, pupilY: 150, 
+        mouth: "M 150 240 Q 200 240 220 235", 
+        browAngle: 10, 
+        colors: ["#aa88ff", "#8866dd", "#ccaaff"], 
+        background: "linear-gradient(45deg, #3a2a4a, #4a3a6a)",
+        name: "Thinking"
+      },
+      sleepy: { 
+        eyeH: 8, eyeY: 155, pupilY: 155, 
+        mouth: "M 160 240 Q 200 250 240 240", 
+        browAngle: 5, 
+        colors: ["#88aacc", "#6699bb", "#aaccdd"], 
+        background: "linear-gradient(45deg, #2a3a4a, #3a4a5a)",
+        name: "Sleepy"
+      },
+      // Enhanced robot-specific emotions
+      glitchy: { 
+        eyeH: 15, eyeY: 135, pupilY: 140, 
+        mouth: "M 130 240 L 200 235 L 270 245 L 190 250 L 260 240", 
+        browAngle: -5, 
+        colors: ["#ff00ff", "#dd00dd", "#ff44ff"], 
+        background: "linear-gradient(45deg, #4a2a4a, #6a2a6a)",
+        name: "Glitchy"
+      },
+      sparkling: { 
+        eyeH: 35, eyeY: 138, pupilY: 143, 
+        mouth: "M 120 225 Q 160 215 200 225 Q 240 215 280 225", 
+        browAngle: -8, 
+        colors: ["#00ffaa", "#00dd88", "#44ffcc"], 
+        background: "linear-gradient(45deg, #2a4a3a, #3a6a4a)",
+        name: "Sparkling"
+      },
+      "laser-focused": { 
+        eyeH: 12, eyeY: 145, pupilY: 148, 
+        mouth: "M 180 245 L 220 245", 
+        browAngle: -15, 
+        colors: ["#ff3300", "#dd2200", "#ff5544"], 
+        background: "linear-gradient(45deg, #4a2a1a, #6a3a2a)",
+        name: "Laser Focused"
+      },
+      processing: { 
+        eyeH: 18, eyeY: 148, pupilY: 152, 
+        mouth: "M 160 245 Q 180 240 200 245 Q 220 240 240 245", 
+        browAngle: 8, 
+        colors: ["#3366ff", "#2244dd", "#5588ff"], 
+        background: "linear-gradient(45deg, #2a2a4a, #3a3a6a)",
+        name: "Processing"
+      },
+      overclocked: { 
+        eyeH: 40, eyeY: 132, pupilY: 147, 
+        mouth: "M 110 215 Q 200 270 290 215", 
+        browAngle: -12, 
+        colors: ["#ffaa00", "#dd8800", "#ffcc44"], 
+        background: "linear-gradient(45deg, #4a3a2a, #6a4a3a)",
+        name: "Overclocked"
+      },
+      // New emotion modes
+      excited: {
+        eyeH: 35, eyeY: 135, pupilY: 140,
+        mouth: "M 110 210 Q 200 290 290 210",
+        browAngle: -10,
+        colors: ["#ff8800", "#ff6600", "#ffaa44"],
+        background: "linear-gradient(45deg, #4a3a1a, #6a4a2a)",
+        name: "Excited"
+      },
+      mysterious: {
+        eyeH: 15, eyeY: 150, pupilY: 153,
+        mouth: "M 170 245 Q 200 235 230 245",
+        browAngle: 5,
+        colors: ["#8800ff", "#6600dd", "#aa44ff"],
+        background: "linear-gradient(45deg, #2a1a4a, #3a2a6a)",
+        name: "Mysterious"
+      },
+      energetic: {
+        eyeH: 38, eyeY: 138, pupilY: 143,
+        mouth: "M 115 215 Q 200 285 285 215",
+        browAngle: -8,
+        colors: ["#00ff44", "#00dd22", "#44ff66"],
+        background: "linear-gradient(45deg, #2a4a1a, #3a6a2a)",
+        name: "Energetic"
+      },
+      cool: {
+        eyeH: 22, eyeY: 148, pupilY: 152,
+        mouth: "M 150 240 L 200 238 L 250 240",
+        browAngle: 0,
+        colors: ["#00ddff", "#00bbdd", "#44eeff"],
+        background: "linear-gradient(45deg, #1a3a4a, #2a4a6a)",
+        name: "Cool"
+      },
+      mischievous: {
+        eyeH: 25, eyeY: 142, pupilY: 147,
+        mouth: "M 130 225 Q 180 250 230 235 Q 250 220 270 225",
+        browAngle: -12,
+        colors: ["#ff4400", "#dd3300", "#ff6644"],
+        background: "linear-gradient(45deg, #4a2a1a, #6a3a2a)",
+        name: "Mischievous"
+      }
     };
 
     let currentEmotion = 'happy';
@@ -1374,6 +1512,8 @@
     let audioCtx = null;
     let discoInterval = null;
     let expressionInterval = null;
+    let colorCycleInterval = null;
+    let currentColorIndex = 0;
     const discoEmotions = ['happy', 'surprised', 'happy', 'thinking'];
     let discoEmotionIndex = 0;
 
@@ -1404,6 +1544,12 @@
       const e = emotions[name];
       if (!e) return;
 
+      // Stop any existing color cycling
+      if (colorCycleInterval) {
+        clearInterval(colorCycleInterval);
+        colorCycleInterval = null;
+      }
+
       document.getElementById('left-eye').setAttribute('cy', e.eyeY);
       document.getElementById('left-eye').setAttribute('ry', e.eyeH);
       document.getElementById('right-eye').setAttribute('cy', e.eyeY);
@@ -1419,7 +1565,28 @@
       document.getElementById('right-brow').setAttribute('y1', 105 - e.browAngle);
       document.getElementById('right-brow').setAttribute('y2', 105 + e.browAngle);
 
-      setColor(e.color);
+      // Set background with colorful gradient
+      document.body.style.background = e.background;
+
+      // Update emotion mode display
+      const emotionModeEl = document.getElementById('emotion-mode');
+      emotionModeEl.textContent = e.name + ' Mode';
+
+      // Handle multiple colors - cycle through them
+      if (e.colors && e.colors.length > 0) {
+        currentColorIndex = 0;
+        setColor(e.colors[currentColorIndex]);
+        
+        if (e.colors.length > 1) {
+          colorCycleInterval = setInterval(() => {
+            currentColorIndex = (currentColorIndex + 1) % e.colors.length;
+            setColor(e.colors[currentColorIndex]);
+          }, 2000); // Cycle every 2 seconds
+        }
+      } else {
+        // Fallback for old format
+        setColor(e.color || '#00ffff');
+      }
     }
 
     function setColor(color) {
@@ -1431,6 +1598,8 @@
       document.getElementById('mouth').setAttribute('stroke', color);
       document.getElementById('name').style.color = color;
       document.getElementById('name').style.textShadow = `0 0 15px ${color}`;
+      document.getElementById('emotion-mode').style.color = color;
+      document.getElementById('emotion-mode').style.textShadow = `0 0 10px ${color}`;
       for (let i = 0; i < 12; i++) {
         document.getElementById(`led-${i}`).setAttribute('fill', color);
       }
@@ -1518,10 +1687,19 @@
 
       const faceSvg = document.getElementById('face-svg');
       const nameEl = document.getElementById('name');
+      const emotionModeEl = document.getElementById('emotion-mode');
 
       if (discoMode) {
+        // Stop color cycling when entering disco mode
+        if (colorCycleInterval) {
+          clearInterval(colorCycleInterval);
+          colorCycleInterval = null;
+        }
+        
         faceSvg.classList.add('disco-bounce');
         nameEl.classList.add('disco-shake');
+        emotionModeEl.classList.add('disco-shake');
+        emotionModeEl.textContent = 'DISCO MODE';
         startDiscoMusic();
 
         discoEmotionIndex = 0;
@@ -1547,13 +1725,14 @@
       } else {
         faceSvg.classList.remove('disco-bounce');
         nameEl.classList.remove('disco-shake');
+        emotionModeEl.classList.remove('disco-shake');
         stopDiscoMusic();
 
         if (expressionInterval) {
           clearInterval(expressionInterval);
           expressionInterval = null;
         }
-        applyEmotion('happy');
+        applyEmotion(currentEmotion);
       }
 
       send({ type: 'disco', enabled: discoMode });
