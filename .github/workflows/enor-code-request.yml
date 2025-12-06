@@ -5,8 +5,10 @@ on:
     types: [opened, labeled]
 
 concurrency:
-  group: enor-request-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  # Global concurrency - only one E-NOR request runs at a time
+  # Requests queue up instead of running in parallel
+  group: enor-code-requests
+  cancel-in-progress: false
 
 jobs:
   implement-request:

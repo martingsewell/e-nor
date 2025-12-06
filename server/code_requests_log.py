@@ -5,8 +5,11 @@ Tracks recent code requests to prevent duplicates and provide context
 
 import json
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional, Dict
 from pathlib import Path
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/requests", tags=["requests"])
 
 # Log file location (same directory as memories.json)
 REQUESTS_LOG_FILE = Path(__file__).parent.parent / "code_requests.json"
@@ -170,3 +173,65 @@ def get_requests_for_prompt() -> str:
         text += f"- {req['title']}{issue_str}\n"
 
     return text
+
+
+def get_all_requests() -> List[dict]:
+    """Get all requests (for UI display)"""
+    requests = load_requests()
+    requests = cleanup_old_requests(requests)
+    save_requests(requests)  # Save cleaned up list
+    return requests
+
+
+# API Endpoints
+
+@router.get("")
+async def api_get_requests() -> Dict:
+    """Get all code requests for display in the UI"""
+    all_requests = get_all_requests()
+    pending = [r for r in all_requests if r.get("status") in ["pending", "in_progress"]]
+    completed = [r for r in all_requests if r.get("status") == "completed"]
+
+    return {
+        "requests": all_requests,
+        "pending": pending,
+        "completed": completed,
+        "pending_count": len(pending)
+    }
+
+
+@router.get("/pending")
+async def api_get_pending() -> Dict:
+    """Get only pending/in-progress requests"""
+    pending = get_pending_requests()
+    return {
+        "pending": pending,
+        "count": len(pending)
+    }
+
+
+@router.post("/{issue_number}/status")
+async def api_update_status(issue_number: int, status: str) -> Dict:
+    """Update the status of a request (called by webhook or manually)"""
+    valid_statuses = ["pending", "in_progress", "completed", "failed"]
+    if status not in valid_statuses:
+        return {"success": False, "message": f"Invalid status. Must be one of: {valid_statuses}"}
+
+    success = update_request_status(issue_number, status)
+    return {
+        "success": success,
+        "message": f"Status updated to {status}" if success else "Request not found"
+    }
+
+
+@router.delete("/{issue_number}")
+async def api_delete_request(issue_number: int) -> Dict:
+    """Remove a request from the log"""
+    requests = load_requests()
+    original_len = len(requests)
+    requests = [r for r in requests if r.get("issue_number") != issue_number]
+
+    if len(requests) < original_len:
+        save_requests(requests)
+        return {"success": True, "message": "Request removed"}
+    return {"success": False, "message": "Request not found"}
