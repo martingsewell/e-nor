@@ -607,6 +607,7 @@
     <div id="dev-console-header">
       <h4>E-NOR Dev Console</h4>
       <div>
+        <button onclick="copyDevConsole()" id="copy-btn">Copy</button>
         <button onclick="clearDevConsole()">Clear</button>
         <button onclick="toggleDevMode()">Close</button>
       </div>
@@ -718,6 +719,30 @@
       consoleOutput.innerHTML = '';
       speechTextEl.textContent = 'Waiting for speech...';
       console.log('Console cleared');
+    }
+
+    function copyDevConsole() {
+      const lines = Array.from(consoleOutput.querySelectorAll('.console-line')).map(line => {
+        const timestamp = line.querySelector('.timestamp')?.textContent || '';
+        const text = line.textContent.replace(timestamp, '').trim();
+        return timestamp + text;
+      });
+      const speechText = speechTextEl?.textContent || '';
+      const fullText = lines.join('\n') + '\n\n[Speech: ' + speechText + ']';
+
+      navigator.clipboard.writeText(fullText).then(() => {
+        const copyBtn = document.getElementById('copy-btn');
+        copyBtn.textContent = 'Copied!';
+        copyBtn.style.background = '#00ff00';
+        copyBtn.style.color = '#000';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy';
+          copyBtn.style.background = '';
+          copyBtn.style.color = '';
+        }, 1500);
+      }).catch(() => {
+        alert('Copy failed - try selecting text manually');
+      });
     }
 
     // ==================== WebSocket ====================
