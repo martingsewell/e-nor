@@ -1627,13 +1627,15 @@
       }
     }
 
-    function startConversation() {
+    async function startConversation() {
+      console.log('Wake word detected! Starting conversation...');
       inConversation = true;
       setVoiceState('conversation', 'Listening...');
       applyEmotion('happy');
 
-      // Greet the user
-      speak("Hey! What's up?");
+      // Greet the user - await to ensure speech completes before listening
+      await speak("Hey! What's up?");
+      console.log('Wake greeting finished');
     }
 
     function endConversation() {
@@ -1727,7 +1729,10 @@
 
     function speak(text) {
       return new Promise((resolve) => {
+        console.log('speak() called with:', text);
+
         if (!synthesis) {
+          console.log('No synthesis available!');
           resolve();
           return;
         }
@@ -1738,7 +1743,7 @@
         speechBuffer = '';
         if (speechTimeout) clearTimeout(speechTimeout);
 
-        // Cancel any ongoing speech
+        // Cancel any ongoing speech and wait a moment (Chrome bug workaround)
         synthesis.cancel();
 
         setVoiceState('speaking', 'Speaking...');
@@ -1747,48 +1752,87 @@
         const interruptBtn = document.getElementById('interrupt-btn');
         interruptBtn.classList.add('visible');
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.1;
-        utterance.volume = 1.0;
+        // Small delay after cancel (Chrome needs this)
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.1;
+          utterance.volume = 1.0;
 
-        // Try to find a good voice
-        const voices = synthesis.getVoices();
-        const preferredVoice = voices.find(v =>
-          v.name.includes('Daniel') ||
-          v.name.includes('Google UK English Male') ||
-          v.name.includes('English United Kingdom')
-        ) || voices.find(v => v.lang.startsWith('en'));
+          // Try to find a good voice
+          const voices = synthesis.getVoices();
+          console.log('Available voices:', voices.length);
 
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
+          const preferredVoice = voices.find(v =>
+            v.name.includes('Daniel') ||
+            v.name.includes('Google UK English Male') ||
+            v.name.includes('English United Kingdom')
+          ) || voices.find(v => v.lang.startsWith('en'));
 
-        utterance.onend = () => {
-          isSpeaking = false;
-          // Hide interrupt button
-          interruptBtn.classList.remove('visible');
-          // Wait a moment before resuming listening to avoid catching echo
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+            console.log('Using voice:', preferredVoice.name);
+          } else {
+            console.log('No preferred voice found, using default');
+          }
+
+          utterance.onstart = () => {
+            console.log('Speech started:', text.substring(0, 30) + '...');
+          };
+
+          utterance.onend = () => {
+            console.log('Speech ended successfully');
+            isSpeaking = false;
+            // Hide interrupt button
+            interruptBtn.classList.remove('visible');
+            // Wait a moment before resuming listening to avoid catching echo
+            setTimeout(() => {
+              if (inConversation && !isSpeaking) {
+                setVoiceState('conversation', 'Listening...');
+                startListening();
+              } else if (!inConversation) {
+                setVoiceState('listening', 'Say "Hey E-NOR"');
+                startListening();
+              }
+            }, 500);
+            resolve();
+          };
+
+          utterance.onerror = (e) => {
+            console.error('Speech synthesis error:', e.error, e);
+            isSpeaking = false;
+            interruptBtn.classList.remove('visible');
+            // Still try to resume listening
+            setTimeout(() => {
+              if (inConversation && !isSpeaking) {
+                setVoiceState('conversation', 'Listening...');
+                startListening();
+              } else if (!inConversation) {
+                setVoiceState('listening', 'Say "Hey E-NOR"');
+                startListening();
+              }
+            }, 500);
+            resolve();
+          };
+
+          console.log('Calling synthesis.speak()...');
+          synthesis.speak(utterance);
+
+          // Chrome bug: sometimes speech gets "stuck" in pending state
+          // This timeout ensures we don't hang forever
           setTimeout(() => {
-            if (inConversation && !isSpeaking) {
-              setVoiceState('conversation', 'Listening...');
-              startListening();
-            } else if (!inConversation) {
-              setVoiceState('listening', 'Say "Hey E-NOR"');
-              startListening();
+            if (isSpeaking && !synthesis.speaking && !synthesis.pending) {
+              console.warn('Speech appears stuck, forcing resume');
+              isSpeaking = false;
+              interruptBtn.classList.remove('visible');
+              if (inConversation) {
+                setVoiceState('conversation', 'Listening...');
+                startListening();
+              }
+              resolve();
             }
-          }, 500);
-          resolve();
-        };
-
-        utterance.onerror = (e) => {
-          console.log('Speech error:', e);
-          isSpeaking = false;
-          interruptBtn.classList.remove('visible');
-          resolve();
-        };
-
-        synthesis.speak(utterance);
+          }, 10000); // 10 second safety timeout
+        }, 100); // 100ms delay after cancel
       });
     }
 
