@@ -1055,11 +1055,17 @@
         // For wake word, check on final results only
         if (result.isFinal) {
           console.log('Heard (wake check):', transcript);
-          if (transcript.includes('hey e-nor') || transcript.includes('hey enor') ||
-              transcript.includes('hey e nor') || transcript.includes('heyeanor') ||
-              transcript.includes('a nor') || transcript.includes('enor') ||
-              transcript.includes('hey nor') || transcript.includes('e-nor') ||
-              transcript.includes('eanor')) {
+          // Many phonetic variations of "Hey E-NOR"
+          const wakeWords = [
+            'hey e-nor', 'hey enor', 'hey e nor', 'heyeanor',
+            'a nor', 'enor', 'hey nor', 'e-nor', 'eanor',
+            'iy nore', 'e nore', 'ee nor', 'eenor', 'i nor',
+            'inor', 'ey nor', 'ay nor', 'ae nor', 'hey noor',
+            'he nor', 'henor', 'hi nor', 'hinor', 'hey nora',
+            'hey ignore', 'hey in or', 'hey anna', 'inna',
+            'hey naw', 'eena', 'ena', 'eenore', 'eynor'
+          ];
+          if (wakeWords.some(w => transcript.includes(w))) {
             startConversation();
           }
         }
