@@ -119,6 +119,9 @@ Available actions you can include in the "actions" array:
 7. Tell a joke (when user asks for jokes):
    {"type": "tell_joke", "joke_type": "dad"}  // joke_type can be "dad", "robot", "riddles", or omit for random
 
+8. Report a UI issue with screenshot (when user mentions interface problems, bugs, or display issues):
+   {"type": "ui_issue_report", "title": "Fix chat display issue", "description": "Chat panel is not showing correctly"}
+
 Example responses:
 
 User: "My favorite color is blue"
@@ -184,6 +187,13 @@ User: "Do you know any riddles?"
   "actions": [{"type": "tell_joke", "joke_type": "riddles"}]
 }
 
+User: "The chat panel is not showing properly"
+{
+  "message": "I see there's a problem with the chat display! Let me capture a screenshot and report this issue.",
+  "emotion": "thinking",
+  "actions": [{"type": "ui_issue_report", "title": "Fix chat panel display", "description": "Chat panel is not showing properly"}]
+}
+
 Remember:
 - ONLY output valid JSON, nothing else
 - Keep messages SHORT for voice
@@ -214,6 +224,13 @@ class ChatResponse(BaseModel):
     emotion: str
     conversation_id: str
     actions: List[dict] = []
+
+
+class ScreenshotCodeRequest(BaseModel):
+    """Model for code request with screenshot"""
+    title: str
+    description: str
+    screenshot: Optional[str] = None
 
 
 def parse_json_response(text: str) -> dict:
@@ -271,6 +288,7 @@ async def handle_actions(actions: List[dict]) -> dict:
         "code_requests": [],
         "code_proposals": [],
         "jokes_told": [],
+        "ui_issues": [],
         "end_conversation": False
     }
 
@@ -357,6 +375,20 @@ async def handle_actions(actions: List[dict]) -> dict:
                     print(f"⚠️ Duplicate request detected: {code_result.get('message')}")
                 else:
                     print(f"❌ Failed to create issue: {code_result.get('message', 'unknown error')}")
+
+        elif action_type == "ui_issue_report":
+            title = action.get("title")
+            description = action.get("description")
+            if title and description:
+                # This action will be handled on the frontend by taking a screenshot
+                # and calling the /api/chat/code-request-screenshot endpoint
+                ui_result = {
+                    "title": title,
+                    "description": description,
+                    "screenshot_requested": True
+                }
+                results["ui_issues"].append(ui_result)
+                print(f"📸 UI issue report requested: {title} - {description}")
 
     return results
 
@@ -527,6 +559,10 @@ async def chat(message: ChatMessage) -> Dict:
         # Include joke info if present
         if action_results["jokes_told"]:
             result["joke"] = action_results["jokes_told"][0]
+            
+        # Include UI issue info if present
+        if action_results["ui_issues"]:
+            result["ui_issue"] = action_results["ui_issues"][0]
 
         return result
 
@@ -565,3 +601,108 @@ async def chat_status() -> Dict:
         "ready": has_key,
         "message": "Ready to chat!" if has_key else "Claude API key not configured"
     }
+
+
+@router.post("/code-request-screenshot")
+async def submit_code_request_with_screenshot(request: ScreenshotCodeRequest) -> Dict:
+    """Submit a code request with an optional screenshot for better debugging"""
+    from .code_request import create_github_issue
+    import base64
+    import tempfile
+    import os
+    
+    if not has_secret("GITHUB_TOKEN"):
+        return {"success": False, "message": "GitHub token not configured"}
+
+    # Check for duplicate requests
+    existing = find_duplicate(request.title, request.description)
+    if existing:
+        issue_num = existing.get("issue_number")
+        if issue_num:
+            return {
+                "success": False,
+                "duplicate": True,
+                "message": f"I already requested that! It's Issue #{issue_num}.",
+                "existing_issue": issue_num
+            }
+
+    try:
+        # Build the issue body
+        body = f"""## Code Change Request from Ronnie (via voice/chat)
+
+**Request:** {request.description}
+
+---
+
+### Context
+This request was made through E-NOR's voice/chat interface with screenshot for better debugging.
+
+### Instructions for Claude Code
+Please implement this feature request:
+1. Read the existing codebase to understand the current implementation
+2. Make the requested changes following the existing code patterns
+3. Test that the changes work with the existing functionality
+4. Keep changes minimal and focused on the request
+
+### Key Files
+- `web/index.html` - Frontend face and chat UI
+- `server/main.py` - FastAPI server
+- `server/chat.py` - Claude chat integration
+- `server/secrets.py` - Secrets management
+
+### Notes
+- This is a Raspberry Pi robot project for a 9-year-old
+- The face displays on a Samsung Galaxy S22
+- Changes auto-deploy when merged to main
+"""
+        
+        # Handle screenshot if provided
+        screenshot_info = ""
+        if request.screenshot:
+            try:
+                # Extract base64 data (remove data:image/png;base64, prefix)
+                screenshot_data = request.screenshot.split(",")[1] if "," in request.screenshot else request.screenshot
+                
+                # Save screenshot to temporary file for attachment
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+                    tmp_file.write(base64.b64decode(screenshot_data))
+                    temp_path = tmp_file.name
+                
+                screenshot_info = f"\n\n### Screenshot\nA screenshot of the UI was captured when this issue was reported. Screenshot size: {len(screenshot_data)} characters (base64)."
+                print(f"📸 Screenshot saved temporarily: {temp_path}")
+                
+                # Clean up temp file after a delay (basic cleanup)
+                import threading
+                def cleanup():
+                    try:
+                        os.unlink(temp_path)
+                        print(f"🗑️ Cleaned up temp screenshot: {temp_path}")
+                    except:
+                        pass
+                threading.Timer(60, cleanup).start()  # Clean up after 1 minute
+                
+            except Exception as e:
+                print(f"⚠️ Error processing screenshot: {e}")
+                screenshot_info = "\n\n### Screenshot\nA screenshot was attempted but could not be processed."
+        
+        # Add screenshot info to body
+        body += screenshot_info
+
+        issue = create_github_issue(
+            title=f"[E-NOR Request] {request.title}",
+            body=body,
+            labels=["enor-request", "automated", "ui-issue"]
+        )
+
+        # Log the request to prevent duplicates
+        add_request(
+            title=request.title,
+            description=request.description,
+            issue_number=issue["number"],
+            issue_url=issue["html_url"]
+        )
+
+        return {"success": True, "issue_number": issue["number"], "url": issue["html_url"]}
+    except Exception as e:
+        print(f"Failed to create code request with screenshot: {e}")
+        return {"success": False, "message": str(e)}

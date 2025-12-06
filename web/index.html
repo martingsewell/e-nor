@@ -7,6 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>E-NOR</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -1840,6 +1841,22 @@
           applyEmotion(data.emotion);
           send({ type: 'emotion', emotion: data.emotion });
         }
+        
+        // Handle UI issue reports with automatic screenshot
+        if (data.ui_issue && data.ui_issue.screenshot_requested) {
+          console.log('UI issue reported, capturing screenshot automatically...');
+          try {
+            const result = await submitCodeRequestWithScreenshot(data.ui_issue.title, data.ui_issue.description);
+            if (result.success) {
+              addMessage(`Screenshot captured! Created issue #${result.issue_number} for debugging.`, 'system');
+            } else {
+              addMessage('Screenshot captured but failed to create issue: ' + result.message, 'system');
+            }
+          } catch (error) {
+            console.error('Error handling UI issue:', error);
+            addMessage('Failed to capture screenshot for issue report.', 'system');
+          }
+        }
       } catch (error) {
         thinkingMsg.remove();
         addMessage('Oops! Something went wrong. Try again?', 'system');
@@ -2509,6 +2526,22 @@
           send({ type: 'emotion', emotion: data.emotion });
         }
 
+        // Handle UI issue reports with automatic screenshot
+        if (data.ui_issue && data.ui_issue.screenshot_requested) {
+          console.log('UI issue reported via voice, capturing screenshot automatically...');
+          try {
+            const result = await submitCodeRequestWithScreenshot(data.ui_issue.title, data.ui_issue.description);
+            if (result.success) {
+              addMessage(`📸 Screenshot captured! Created issue #${result.issue_number} for debugging.`, 'system');
+            } else {
+              addMessage('Screenshot captured but failed to create issue: ' + result.message, 'system');
+            }
+          } catch (error) {
+            console.error('Error handling UI issue:', error);
+            addMessage('Failed to capture screenshot for issue report.', 'system');
+          }
+        }
+
         // Speak the response
         await speak(data.response);
 
@@ -3087,6 +3120,60 @@
     function closePendingPanel() {
       pendingPanel.classList.remove('visible');
       pendingOverlay.classList.remove('visible');
+    }
+
+    // ==================== Screenshot Functionality ====================
+    async function captureScreenshot() {
+      try {
+        console.log('Capturing screenshot...');
+        
+        // Use html2canvas library - we'll add it via CDN
+        if (typeof html2canvas === 'undefined') {
+          console.error('html2canvas library not loaded');
+          return null;
+        }
+        
+        const canvas = await html2canvas(document.body, {
+          height: window.innerHeight,
+          width: window.innerWidth,
+          useCORS: true,
+          scale: 0.5 // Reduce size for faster upload
+        });
+        
+        // Convert canvas to base64 data URL
+        const dataUrl = canvas.toDataURL('image/png', 0.8);
+        console.log('Screenshot captured, size:', Math.round(dataUrl.length / 1024), 'KB');
+        
+        return dataUrl;
+      } catch (error) {
+        console.error('Screenshot capture failed:', error);
+        return null;
+      }
+    }
+
+    // Enhanced submit code request function with screenshot support
+    async function submitCodeRequestWithScreenshot(title, description) {
+      try {
+        // Capture screenshot
+        const screenshot = await captureScreenshot();
+        
+        const response = await fetch('/api/chat/code-request-screenshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title,
+            description: description,
+            screenshot: screenshot
+          })
+        });
+        
+        const result = await response.json();
+        console.log('Code request with screenshot result:', result);
+        return result;
+      } catch (error) {
+        console.error('Error submitting code request with screenshot:', error);
+        return { success: false, message: 'Failed to submit request with screenshot' };
+      }
     }
 
     // Check for pending requests periodically
