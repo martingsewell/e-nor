@@ -925,6 +925,79 @@
       50% { opacity: 1; }
     }
 
+    /* Comments Modal */
+    #comments-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    #comments-modal.visible { display: flex; }
+
+    #comments-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #comments-header h2 {
+      color: #00ffff;
+      font-size: 20px;
+    }
+    #close-comments {
+      font-size: 28px;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    #close-comments:hover { opacity: 1; }
+
+    .comment-item, .issue-item {
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-left: 4px solid #0e4b99;
+    }
+    .issue-item {
+      border-left-color: #00ff88;
+    }
+
+    .comment-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .comment-author {
+      font-weight: bold;
+      color: #00ffff;
+    }
+    .comment-date {
+      color: #aaa;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .comment-body {
+      color: #fff;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
     /* Pending Requests Panel */
     #pending-panel {
       display: none;
@@ -1176,6 +1249,17 @@
 
     <div id="versions-list">
       <!-- Versions will be loaded here -->
+    </div>
+  </div>
+
+  <!-- Comments Modal -->
+  <div id="comments-modal">
+    <div id="comments-header">
+      <h2>💬 Issue Comments</h2>
+      <button id="close-comments" onclick="closeComments()">&times;</button>
+    </div>
+    <div id="comments-content">
+      <!-- Comments will be loaded here -->
     </div>
   </div>
 
@@ -1875,6 +1959,73 @@
         sendMessage();
       }
     });
+
+    // ==================== Comments ====================
+    function openComments(issueNumber) {
+      document.getElementById('comments-modal').classList.add('visible');
+      loadIssueComments(issueNumber);
+    }
+
+    function closeComments() {
+      document.getElementById('comments-modal').classList.remove('visible');
+    }
+
+    async function loadIssueComments(issueNumber) {
+      const contentDiv = document.getElementById('comments-content');
+      contentDiv.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Loading comments...</div>';
+
+      try {
+        const response = await fetch(`/api/requests/${issueNumber}/comments`);
+        const data = await response.json();
+
+        if (!data.success) {
+          contentDiv.innerHTML = `<div style="color: #ff4444; text-align: center; padding: 20px;">Failed to load comments: ${data.message}</div>`;
+          return;
+        }
+
+        let html = '';
+
+        // Show issue details first
+        const issue = data.issue;
+        const issueDate = new Date(issue.created_at).toLocaleDateString();
+        html += `
+          <div class="issue-item">
+            <div class="comment-header">
+              <img src="${issue.user.avatar_url}" alt="${issue.user.login}" class="comment-avatar">
+              <span class="comment-author">${issue.user.login}</span>
+              <span class="comment-date">${issueDate}</span>
+            </div>
+            <h3 style="color: #00ff88; margin-bottom: 10px;">${escapeHtml(issue.title)}</h3>
+            <div class="comment-body">${escapeHtml(issue.body || 'No description provided.')}</div>
+          </div>
+        `;
+
+        // Show comments
+        if (data.comments && data.comments.length > 0) {
+          data.comments.forEach(comment => {
+            const commentDate = new Date(comment.created_at).toLocaleDateString();
+            html += `
+              <div class="comment-item">
+                <div class="comment-header">
+                  <img src="${comment.user.avatar_url}" alt="${comment.user.login}" class="comment-avatar">
+                  <span class="comment-author">${comment.user.login}</span>
+                  <span class="comment-date">${commentDate}</span>
+                </div>
+                <div class="comment-body">${escapeHtml(comment.body)}</div>
+              </div>
+            `;
+          });
+        } else {
+          html += '<div style="color: #aaa; text-align: center; padding: 20px; font-style: italic;">No comments yet.</div>';
+        }
+
+        contentDiv.innerHTML = html;
+
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        contentDiv.innerHTML = '<div style="color: #ff4444; text-align: center; padding: 20px;">Error loading comments. Please try again.</div>';
+      }
+    }
 
     // ==================== Settings ====================
     function openSettings() {
@@ -3019,7 +3170,7 @@
             html += pendingItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="event.preventDefault(); openComments(${req.issue_number})" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
@@ -3042,7 +3193,7 @@
             html += completedItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="event.preventDefault(); openComments(${req.issue_number})" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
@@ -3065,7 +3216,7 @@
             html += failedItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="event.preventDefault(); openComments(${req.issue_number})" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
