@@ -2,16 +2,20 @@ name: E-NOR Code Request
 
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]
 
 jobs:
   implement-request:
-    # Only run when issue is opened with enor-request label
-    # (E-NOR always creates issues with labels pre-attached)
+    # Run when:
+    # 1. Issue is opened with enor-request label (new request)
+    # 2. enor-retry label is added (timeout retry)
     if: |
       github.event.issue.state == 'open' &&
-      contains(github.event.issue.labels.*.name, 'enor-request')
+      contains(github.event.issue.labels.*.name, 'enor-request') &&
+      (github.event.action == 'opened' ||
+       (github.event.action == 'labeled' && github.event.label.name == 'enor-retry'))
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       issues: write
@@ -32,15 +36,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Remove retry label if present
+        if: contains(github.event.issue.labels.*.name, 'enor-retry')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'enor-retry'
+            })
+
       - name: Add comment - Starting work
         uses: actions/github-script@v7
         with:
           script: |
+            const isRetry = context.payload.action === 'labeled' && context.payload.label?.name === 'enor-retry';
+            const message = isRetry
+              ? '🔄 **E-NOR is retrying...** Claude Code is giving this request another go!'
+              : '🤖 **E-NOR is thinking...** Claude Code is now working on this request!';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🤖 **E-NOR is thinking...** Claude Code is now working on this request!'
+              body: message
             })
 
       - name: Run Claude Code
@@ -97,4 +117,23 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '❌ **Oops!** Something went wrong. Dad might need to implement this one manually.'
+            })
+
+      - name: Add comment - Timed out
+        if: cancelled()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⏱️ **Timed out!** This request took too long (>15 min). A retry will be triggered automatically.'
+            })
+            // Add retry label to trigger retry workflow
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['enor-retry']
             })
