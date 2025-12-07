@@ -3285,6 +3285,14 @@
       // Unlock audio with user gesture
       await unlockAudio();
 
+      // Request full screen
+      try {
+        await document.documentElement.requestFullscreen();
+        console.log('Entered fullscreen mode');
+      } catch (error) {
+        console.log('Could not enter fullscreen:', error);
+      }
+
       // Hide tap-to-start overlay
       tapToStart.classList.add('hidden');
 
