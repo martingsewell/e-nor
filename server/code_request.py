@@ -34,10 +34,11 @@ class CodeRequestResponse(BaseModel):
     issue_number: Optional[int] = None
 
 
-def create_github_issue(title: str, body: str, labels: list = None) -> dict:
+def create_github_issue(title: str, body: str, labels: list = None, screenshot_data: str = None) -> dict:
     """
     Create a GitHub issue using the REST API.
     Returns the created issue data or raises an exception.
+    Optionally handles screenshot data for UI issues.
     """
     token = get_secret("GITHUB_TOKEN")
     if not token:
@@ -45,9 +46,21 @@ def create_github_issue(title: str, body: str, labels: list = None) -> dict:
 
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/issues"
 
+    # Enhanced body with screenshot context if provided
+    enhanced_body = body
+    if screenshot_data:
+        try:
+            import base64
+            # Validate screenshot data
+            decoded = base64.b64decode(screenshot_data.split(",")[1] if "," in screenshot_data else screenshot_data, validate=True)
+            size_kb = len(decoded) / 1024
+            enhanced_body += f"\n\n**📸 Screenshot Available**: {size_kb:.1f}KB image captured automatically for debugging"
+        except Exception as e:
+            enhanced_body += f"\n\n**📸 Screenshot Processing Error**: {str(e)}"
+
     data = {
         "title": title,
-        "body": body,
+        "body": enhanced_body,
         "labels": labels or ["enor-request", "automated"]
     }
 

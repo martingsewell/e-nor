@@ -663,27 +663,29 @@ Please implement this feature request:
                 # Extract base64 data (remove data:image/png;base64, prefix)
                 screenshot_data = request.screenshot.split(",")[1] if "," in request.screenshot else request.screenshot
                 
-                # Save screenshot to temporary file for attachment
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                    tmp_file.write(base64.b64decode(screenshot_data))
-                    temp_path = tmp_file.name
+                # Validate base64 data
+                decoded_size = len(base64.b64decode(screenshot_data, validate=True))
                 
-                screenshot_info = f"\n\n### Screenshot\nA screenshot of the UI was captured when this issue was reported. Screenshot size: {len(screenshot_data)} characters (base64)."
-                print(f"📸 Screenshot saved temporarily: {temp_path}")
+                screenshot_info = f"""
+
+### Screenshot Information
+A screenshot of the UI was automatically captured when this issue was reported to aid in debugging.
+- Screenshot format: PNG
+- Base64 size: {len(screenshot_data):,} characters
+- Decoded size: {decoded_size:,} bytes ({decoded_size / 1024:.1f} KB)
+- Captured at: UI issue report time
+
+This screenshot shows the state of the interface when the user experienced the problem, which will help with visual debugging and understanding the issue context."""
                 
-                # Clean up temp file after a delay (basic cleanup)
-                import threading
-                def cleanup():
-                    try:
-                        os.unlink(temp_path)
-                        print(f"🗑️ Cleaned up temp screenshot: {temp_path}")
-                    except:
-                        pass
-                threading.Timer(60, cleanup).start()  # Clean up after 1 minute
+                print(f"📸 Screenshot processed: {decoded_size / 1024:.1f}KB")
                 
             except Exception as e:
                 print(f"⚠️ Error processing screenshot: {e}")
-                screenshot_info = "\n\n### Screenshot\nA screenshot was attempted but could not be processed."
+                screenshot_info = f"""
+
+### Screenshot Information
+A screenshot was attempted but encountered an error during processing: {str(e)}
+This may indicate an issue with the screenshot capture or encoding process."""
         
         # Add screenshot info to body
         body += screenshot_info
@@ -691,7 +693,8 @@ Please implement this feature request:
         issue = create_github_issue(
             title=f"[E-NOR Request] {request.title}",
             body=body,
-            labels=["enor-request", "automated", "ui-issue"]
+            labels=["enor-request", "automated", "ui-issue"],
+            screenshot_data=request.screenshot
         )
 
         # Log the request to prevent duplicates
