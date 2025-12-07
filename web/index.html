@@ -312,6 +312,33 @@
     .message.system strong {
       color: #ffcc88;
     }
+    .message.action {
+      align-self: center;
+      background: linear-gradient(135deg, #1a2a3a 0%, #0d1a2a 100%);
+      border: 1px solid #334455;
+      color: #88aacc;
+      font-size: 12px;
+      max-width: 95%;
+      padding: 8px 12px;
+    }
+    .message.action .action-label {
+      display: inline-block;
+      background: #224466;
+      color: #66ccff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+    .message.action .action-icon {
+      margin-right: 4px;
+    }
+    .message.action .action-detail {
+      color: #aaccee;
+      font-style: italic;
+    }
 
     #chat-input-container {
       display: flex;
@@ -1926,6 +1953,44 @@
       return msg;
     }
 
+    // Format and display an action in the chat
+    function addActionMessage(action) {
+      const msg = document.createElement('div');
+      msg.className = 'message action';
+
+      // Define action display info
+      const actionInfo = {
+        'remember': { icon: '💾', label: 'Memory', getText: (a) => `Saving: "${a.fact}"` },
+        'update_memory': { icon: '📝', label: 'Update', getText: (a) => `Updating "${a.topic}": ${a.new_fact}` },
+        'forget': { icon: '🗑️', label: 'Forget', getText: (a) => `Forgetting: "${a.topic}"` },
+        'end_conversation': { icon: '👋', label: 'Ending', getText: () => 'Ending conversation' },
+        'code_request_proposal': { icon: '💡', label: 'Proposal', getText: (a) => `${a.title}` },
+        'code_request_confirmed': { icon: '🔧', label: 'Code Request', getText: (a) => `Creating: ${a.title}` },
+        'tell_joke': { icon: '😄', label: 'Joke', getText: (a) => `Telling a ${a.joke_type || 'random'} joke` },
+        'ui_issue_report': { icon: '📸', label: 'UI Issue', getText: (a) => `Reporting: ${a.title}` }
+      };
+
+      const info = actionInfo[action.type] || { icon: '⚡', label: 'Action', getText: () => action.type };
+
+      msg.innerHTML = `
+        <span class="action-icon">${info.icon}</span>
+        <span class="action-label">${info.label}</span>
+        <span class="action-detail">${info.getText(action)}</span>
+      `;
+
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return msg;
+    }
+
+    // Display all actions from a response
+    function displayActions(actions) {
+      if (!actions || actions.length === 0) return;
+      for (const action of actions) {
+        addActionMessage(action);
+      }
+    }
+
     async function sendMessage() {
       const text = chatInput.value.trim();
       if (!text || isWaitingForResponse) return;
@@ -1957,6 +2022,9 @@
 
         // Add E-NOR's response
         addMessage(data.response, 'enor');
+
+        // Display any actions E-NOR is taking
+        displayActions(data.actions);
 
         // Update emotion based on response
         if (data.emotion && emotions[data.emotion]) {
@@ -2655,6 +2723,9 @@
 
         // Add to chat
         addMessage(data.response, 'enor');
+
+        // Display any actions E-NOR is taking
+        displayActions(data.actions);
 
         // Update emotion
         if (data.emotion && emotions[data.emotion]) {
