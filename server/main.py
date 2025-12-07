@@ -15,7 +15,7 @@ from .memories import router as memories_router
 from .code_requests_log import router as requests_router
 from .version_control import router as versions_router
 
-app = FastAPI(title="E-NOR", version="0.2.0")
+app = FastAPI(title="E-NOR", version="0.3.0")
 
 # Add CORS middleware for API requests
 app.add_middleware(
@@ -51,7 +51,18 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "robot": "E-NOR", "clients": len(connected_clients)}
+    # Get current version info
+    from .version_control import load_versions
+    versions = load_versions()
+    current_version = next((v for v in versions if v.get("is_current")), None)
+    
+    return {
+        "status": "ok", 
+        "robot": "E-NOR", 
+        "clients": len(connected_clients),
+        "version": current_version["version_number"] if current_version else "unknown",
+        "version_description": current_version["description"] if current_version else "No version info"
+    }
 
 
 @app.websocket("/ws")
