@@ -23,6 +23,40 @@
       "description": "Added version control system",
       "status": "working",
       "created_at": "2025-12-06T17:34:12.031676",
+      "is_current": false,
+      "backup_available": true,
+      "change_summary": [
+        "web/index.html",
+        "server/main.py",
+        "server/chat.py",
+        "server/secrets.py",
+        "server/memories.py",
+        "server/code_request.py"
+      ]
+    },
+    {
+      "id": "v003_1765107269",
+      "version_number": 3,
+      "description": "Test version for automatic tracking",
+      "status": "testing",
+      "created_at": "2025-12-07T11:34:29.656596",
+      "is_current": false,
+      "backup_available": true,
+      "change_summary": [
+        "web/index.html",
+        "server/main.py",
+        "server/chat.py",
+        "server/secrets.py",
+        "server/memories.py",
+        "server/code_request.py"
+      ]
+    },
+    {
+      "id": "v004_1765107297",
+      "version_number": 4,
+      "description": "Add version tracking for all code changes",
+      "status": "working",
+      "created_at": "2025-12-07T11:34:57.503433",
       "is_current": true,
       "backup_available": true,
       "change_summary": [
