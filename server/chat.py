@@ -5,6 +5,9 @@ Handles conversation with Claude API using structured JSON responses
 
 import json
 import random
+import base64
+import tempfile
+import os
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -656,8 +659,9 @@ Please implement this feature request:
 - Changes auto-deploy when merged to main
 """
         
-        # Handle screenshot if provided
-        screenshot_info = ""
+
+        # Create issue with screenshot if available
+        screenshot_path = None
         if request.screenshot:
             try:
                 # Extract base64 data (remove data:image/png;base64, prefix)
@@ -666,33 +670,29 @@ Please implement this feature request:
                 # Save screenshot to temporary file for attachment
                 with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
                     tmp_file.write(base64.b64decode(screenshot_data))
-                    temp_path = tmp_file.name
+                    screenshot_path = tmp_file.name
                 
-                screenshot_info = f"\n\n### Screenshot\nA screenshot of the UI was captured when this issue was reported. Screenshot size: {len(screenshot_data)} characters (base64)."
-                print(f"📸 Screenshot saved temporarily: {temp_path}")
-                
-                # Clean up temp file after a delay (basic cleanup)
-                import threading
-                def cleanup():
-                    try:
-                        os.unlink(temp_path)
-                        print(f"🗑️ Cleaned up temp screenshot: {temp_path}")
-                    except:
-                        pass
-                threading.Timer(60, cleanup).start()  # Clean up after 1 minute
-                
+                print(f"📸 Screenshot saved temporarily: {screenshot_path}")
             except Exception as e:
                 print(f"⚠️ Error processing screenshot: {e}")
-                screenshot_info = "\n\n### Screenshot\nA screenshot was attempted but could not be processed."
-        
-        # Add screenshot info to body
-        body += screenshot_info
 
         issue = create_github_issue(
             title=f"[E-NOR Request] {request.title}",
             body=body,
-            labels=["enor-request", "automated", "ui-issue"]
+            labels=["enor-request", "automated", "ui-issue"],
+            screenshot_path=screenshot_path
         )
+        
+        # Clean up temp screenshot file if created
+        if screenshot_path:
+            import threading
+            def cleanup():
+                try:
+                    os.unlink(screenshot_path)
+                    print(f"🗑️ Cleaned up temp screenshot: {screenshot_path}")
+                except:
+                    pass
+            threading.Timer(60, cleanup).start()  # Clean up after 1 minute
 
         # Log the request to prevent duplicates
         add_request(
