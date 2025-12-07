@@ -4,12 +4,6 @@ on:
   issues:
     types: [opened, labeled]
 
-concurrency:
-  # Global concurrency - only one E-NOR request runs at a time
-  # Requests queue up instead of running in parallel
-  group: enor-code-requests
-  cancel-in-progress: false
-
 jobs:
   implement-request:
     # Only run when:
@@ -28,6 +22,14 @@ jobs:
       id-token: write
 
     steps:
+      - name: Queue - wait for previous runs
+        uses: softprops/turnstyle@v2
+        with:
+          poll-interval-seconds: 30
+          same-branch-only: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
