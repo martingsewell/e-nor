@@ -1027,6 +1027,116 @@
     #pending-overlay.visible {
       display: block;
     }
+
+    /* Comments Modal */
+    #comments-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1100;
+    }
+    #comments-overlay.visible {
+      display: block;
+    }
+    #comments-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 600px;
+      max-height: 80%;
+      background: #1a1a2e;
+      border: 2px solid #00ffff;
+      border-radius: 15px;
+      z-index: 1101;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #comments-modal.visible {
+      display: flex;
+    }
+    #comments-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #0d0d1a;
+      border-bottom: 1px solid #333;
+    }
+    #comments-header h3 {
+      color: #00ffff;
+      font-size: 14px;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #close-comments {
+      font-size: 24px;
+      background: none;
+      border: none;
+      color: #00ffff;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    #comments-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+    .comment-item {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #00ffff;
+    }
+    .comment-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .comment-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+    }
+    .comment-author {
+      font-weight: bold;
+      color: #00ffff;
+      font-size: 12px;
+    }
+    .comment-date {
+      color: #888;
+      font-size: 10px;
+      margin-left: auto;
+    }
+    .comment-body {
+      color: #ccc;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .issue-title {
+      color: #ffaa00;
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .loading-comments {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
   </style>
 </head>
 <body>
@@ -1188,6 +1298,18 @@
     </div>
     <div id="pending-list">
       <!-- Pending requests loaded here -->
+    </div>
+  </div>
+
+  <!-- Comments Modal -->
+  <div id="comments-overlay" onclick="closeCommentsModal()"></div>
+  <div id="comments-modal">
+    <div id="comments-header">
+      <h3>💬 Claude Comments</h3>
+      <button id="close-comments" onclick="closeCommentsModal()">&times;</button>
+    </div>
+    <div id="comments-content">
+      <div class="loading-comments">Loading comments...</div>
     </div>
   </div>
 
@@ -3019,7 +3141,7 @@
             html += pendingItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="showIssueComments(${req.issue_number}); return false;" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
@@ -3042,7 +3164,7 @@
             html += completedItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="showIssueComments(${req.issue_number}); return false;" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
@@ -3065,7 +3187,7 @@
             html += failedItems.map(req => {
               const timeAgo = getTimeAgo(req.created_at);
               const issueLink = req.issue_number
-                ? `<a href="https://github.com/martingsewell/e-nor/issues/${req.issue_number}" target="_blank" class="issue-link">#${req.issue_number}</a>`
+                ? `<a href="#" onclick="showIssueComments(${req.issue_number}); return false;" class="issue-link">#${req.issue_number}</a>`
                 : '';
 
               return `
@@ -3120,6 +3242,83 @@
     function closePendingPanel() {
       pendingPanel.classList.remove('visible');
       pendingOverlay.classList.remove('visible');
+    }
+
+    // ==================== Comments Modal Functions ====================
+    const commentsModal = document.getElementById('comments-modal');
+    const commentsOverlay = document.getElementById('comments-overlay');
+    const commentsContent = document.getElementById('comments-content');
+
+    async function showIssueComments(issueNumber) {
+      // Show modal and overlay
+      commentsModal.classList.add('visible');
+      commentsOverlay.classList.add('visible');
+      
+      // Update header with issue number
+      document.querySelector('#comments-header h3').innerHTML = `💬 Issue #${issueNumber} Comments`;
+      
+      // Show loading state
+      commentsContent.innerHTML = '<div class="loading-comments">Loading comments...</div>';
+      
+      try {
+        const response = await fetch(`/api/requests/${issueNumber}/comments`);
+        const data = await response.json();
+        
+        if (data.success) {
+          let html = '';
+          
+          // Show issue title and description first
+          if (data.issue) {
+            html += `<div class="issue-title">${escapeHtml(data.issue.title)}</div>`;
+            if (data.issue.body) {
+              html += `
+                <div class="comment-item" style="border-left-color: #ffaa00;">
+                  <div class="comment-header">
+                    <span class="comment-author">Issue Description</span>
+                    <span class="comment-date">${formatDate(data.issue.created_at)}</span>
+                  </div>
+                  <div class="comment-body">${escapeHtml(data.issue.body)}</div>
+                </div>
+              `;
+            }
+          }
+          
+          // Show comments
+          if (data.comments && data.comments.length > 0) {
+            data.comments.forEach(comment => {
+              html += `
+                <div class="comment-item">
+                  <div class="comment-header">
+                    <img src="${comment.avatar_url}" alt="${escapeHtml(comment.author)}" class="comment-avatar">
+                    <span class="comment-author">${escapeHtml(comment.author)}</span>
+                    <span class="comment-date">${formatDate(comment.created_at)}</span>
+                  </div>
+                  <div class="comment-body">${escapeHtml(comment.body)}</div>
+                </div>
+              `;
+            });
+          } else {
+            html += '<div style="text-align: center; padding: 20px; color: #888;">No comments yet.</div>';
+          }
+          
+          commentsContent.innerHTML = html;
+        } else {
+          commentsContent.innerHTML = `<div style="text-align: center; padding: 20px; color: #ff4444;">Error: ${escapeHtml(data.message)}</div>`;
+        }
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        commentsContent.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff4444;">Failed to load comments</div>';
+      }
+    }
+
+    function closeCommentsModal() {
+      commentsModal.classList.remove('visible');
+      commentsOverlay.classList.remove('visible');
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }
 
     // ==================== Screenshot Functionality ====================

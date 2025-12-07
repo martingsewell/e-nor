@@ -281,3 +281,63 @@ async def api_delete_request(issue_number: int) -> Dict:
         save_requests(requests)
         return {"success": True, "message": "Request removed"}
     return {"success": False, "message": "Request not found"}
+
+
+@router.get("/{issue_number}/comments")
+async def api_get_issue_comments(issue_number: int) -> Dict:
+    """Get all comments for a GitHub issue"""
+    from .secrets import get_secret
+    
+    token = get_secret("GITHUB_TOKEN")
+    if not token:
+        return {"success": False, "message": "GitHub token not configured"}
+
+    try:
+        url = f"https://api.github.com/repos/martingsewell/e-nor/issues/{issue_number}/comments"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "E-NOR-Robot"
+        }
+        
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req) as response:
+            comments_data = json.loads(response.read().decode('utf-8'))
+            
+            # Also get the issue data for context
+            issue_url = f"https://api.github.com/repos/martingsewell/e-nor/issues/{issue_number}"
+            issue_req = urllib.request.Request(issue_url, headers=headers)
+            with urllib.request.urlopen(issue_req) as issue_response:
+                issue_data = json.loads(issue_response.read().decode('utf-8'))
+            
+            # Format comments for display
+            formatted_comments = []
+            for comment in comments_data:
+                formatted_comments.append({
+                    "author": comment["user"]["login"],
+                    "avatar_url": comment["user"]["avatar_url"],
+                    "body": comment["body"],
+                    "created_at": comment["created_at"],
+                    "updated_at": comment["updated_at"],
+                    "html_url": comment["html_url"]
+                })
+            
+            return {
+                "success": True,
+                "issue": {
+                    "number": issue_data["number"],
+                    "title": issue_data["title"],
+                    "state": issue_data["state"],
+                    "created_at": issue_data["created_at"],
+                    "html_url": issue_data["html_url"],
+                    "body": issue_data["body"]
+                },
+                "comments": formatted_comments,
+                "comment_count": len(formatted_comments)
+            }
+            
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        return {"success": False, "message": f"GitHub API error: {e.code} - {error_body}"}
+    except Exception as e:
+        return {"success": False, "message": f"Error fetching comments: {str(e)}"}
