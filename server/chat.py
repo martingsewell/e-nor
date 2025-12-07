@@ -479,7 +479,7 @@ async def call_claude(messages: List[dict], system: str) -> str:
     client = anthropic.Anthropic(api_key=api_key)
 
     response = client.messages.create(
-        model="claude-3-5-haiku-20241022",
+        model="claude-sonnet-4-5-20250929",
         max_tokens=300,  # Slightly more for JSON structure
         system=system,
         messages=messages
