@@ -2,18 +2,15 @@ name: E-NOR Code Request
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 jobs:
   implement-request:
-    # Only run when:
-    # - Issue is opened with enor-request label, OR
-    # - The enor-request label specifically is added (not other labels like 'automated')
+    # Only run when issue is opened with enor-request label
+    # (E-NOR always creates issues with labels pre-attached)
     if: |
-      github.event.issue.state == 'open' && (
-        (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'enor-request')) ||
-        (github.event.action == 'labeled' && github.event.label.name == 'enor-request')
-      )
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'enor-request')
     runs-on: ubuntu-latest
     permissions:
       contents: write
