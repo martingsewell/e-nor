@@ -210,6 +210,63 @@
       animation: discoShake 0.3s ease-in-out infinite;
     }
 
+    /* Action display overlay */
+    #action-overlay {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 20, 40, 0.95);
+      border: 2px solid #00ffff;
+      border-radius: 20px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px) scale(0.9);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      z-index: 100;
+      max-width: 300px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
+    }
+    #action-overlay.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    #action-overlay.pulse {
+      animation: actionPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes actionPulse {
+      0%, 100% { 
+        box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
+        border-color: #00ffff;
+      }
+      50% { 
+        box-shadow: 0 8px 32px rgba(0, 255, 255, 0.6);
+        border-color: #44ffff;
+      }
+    }
+    #action-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    #action-text {
+      color: #00ffff;
+      font-weight: bold;
+      font-size: 14px;
+      text-shadow: 0 0 10px #00ffff;
+      line-height: 1.2;
+    }
+    #action-detail {
+      color: #88ccff;
+      font-size: 12px;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+
     /* Status and Settings */
     #status {
       position: absolute;
@@ -1225,6 +1282,15 @@
 
     <div id="name">E-NOR</div>
     <div id="emotion-mode">Happy Mode</div>
+    
+    <!-- Action overlay for real-time action display -->
+    <div id="action-overlay">
+      <span id="action-icon">⚡</span>
+      <div>
+        <div id="action-text">Processing...</div>
+        <div id="action-detail">Working on something</div>
+      </div>
+    </div>
   </div>
 
   <!-- Bottom: Chat -->
@@ -1512,6 +1578,9 @@
         } else if (msg.type === 'state') {
           applyEmotion(msg.data.emotion);
           if (msg.data.disco_mode) toggleDisco();
+        } else if (msg.type === 'action') {
+          // Real-time action display on face
+          showActionOnFace(msg.action);
         }
       };
     }
@@ -1988,7 +2057,49 @@
       if (!actions || actions.length === 0) return;
       for (const action of actions) {
         addActionMessage(action);
+        showActionOnFace(action); // Also show on face overlay
       }
+    }
+
+    // Show action overlay on the face
+    let actionTimeout = null;
+    function showActionOnFace(action) {
+      // Define action display info (same as chat but optimized for overlay)
+      const actionInfo = {
+        'remember': { icon: '💾', label: 'Saving Memory', getText: (a) => a.fact ? `"${a.fact.length > 30 ? a.fact.substring(0, 30) + '...' : a.fact}"` : 'New memory' },
+        'update_memory': { icon: '📝', label: 'Updating Memory', getText: (a) => a.new_fact ? `"${a.new_fact.length > 30 ? a.new_fact.substring(0, 30) + '...' : a.new_fact}"` : `Updating ${a.topic}` },
+        'forget': { icon: '🗑️', label: 'Forgetting', getText: (a) => `"${a.topic}"` },
+        'end_conversation': { icon: '👋', label: 'Goodbye!', getText: () => 'Going back to sleep' },
+        'code_request_proposal': { icon: '💡', label: 'Code Idea', getText: (a) => a.title || 'New feature idea' },
+        'code_request_confirmed': { icon: '🔧', label: 'Creating Request', getText: (a) => a.title || 'New code request' },
+        'tell_joke': { icon: '😄', label: 'Telling Joke', getText: (a) => `${a.joke_type || 'Random'} joke coming up!` },
+        'ui_issue_report': { icon: '📸', label: 'Reporting Bug', getText: (a) => a.title || 'UI issue report' }
+      };
+
+      const info = actionInfo[action.type] || { icon: '⚡', label: 'Processing', getText: () => action.type };
+      
+      const overlay = document.getElementById('action-overlay');
+      const icon = document.getElementById('action-icon');
+      const text = document.getElementById('action-text');
+      const detail = document.getElementById('action-detail');
+      
+      // Update content
+      icon.textContent = info.icon;
+      text.textContent = info.label;
+      detail.textContent = info.getText(action);
+      
+      // Clear any existing timeout
+      if (actionTimeout) {
+        clearTimeout(actionTimeout);
+      }
+      
+      // Show overlay with animation
+      overlay.classList.add('visible', 'pulse');
+      
+      // Hide after a few seconds
+      actionTimeout = setTimeout(() => {
+        overlay.classList.remove('visible', 'pulse');
+      }, 4000); // Show for 4 seconds
     }
 
     async function sendMessage() {

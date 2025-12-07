@@ -21,6 +21,19 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 # Store conversation histories in memory (simple dict by conversation_id)
 conversations: Dict[str, List[dict]] = {}
 
+# WebSocket broadcast function for actions
+async def broadcast_action(action: dict):
+    """Broadcast action to all connected WebSocket clients"""
+    try:
+        # Import here to avoid circular imports
+        from .main import broadcast
+        await broadcast({"type": "action", "action": action})
+    except ImportError:
+        # Fallback if main is not available (shouldn't happen in normal operation)
+        print(f"⚡ Action: {action.get('type', 'unknown')} (broadcast unavailable)")
+    except Exception as e:
+        print(f"❌ Error broadcasting action: {e}")
+
 # Joke collections for E-NOR's joke mode
 JOKES = {
     "dad": [
@@ -294,6 +307,10 @@ async def handle_actions(actions: List[dict]) -> dict:
         "ui_issues": [],
         "end_conversation": False
     }
+
+    # Broadcast actions via WebSocket for real-time display
+    for action in actions:
+        await broadcast_action(action)
 
     for action in actions:
         action_type = action.get("type")
