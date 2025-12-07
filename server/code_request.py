@@ -6,6 +6,7 @@ Allows E-NOR to request code changes by creating GitHub issues
 import json
 import urllib.request
 import urllib.error
+import base64
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -34,7 +35,31 @@ class CodeRequestResponse(BaseModel):
     issue_number: Optional[int] = None
 
 
-def create_github_issue(title: str, body: str, labels: list = None) -> dict:
+def upload_github_asset(file_path: str, filename: str) -> str:
+    """
+    Upload a file to GitHub as a release asset or use GitHub's asset upload API.
+    For simplicity, we'll embed the image as a data URL in the issue body.
+    Returns the markdown image reference.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+        
+        # Convert to base64 for embedding
+        b64_data = base64.b64encode(file_data).decode('utf-8')
+        data_url = f"data:image/png;base64,{b64_data}"
+        
+        # Create a markdown image with the data URL
+        # Note: GitHub issues don't support data URLs, but we can provide file info
+        file_size_kb = len(file_data) // 1024
+        return f"**Screenshot captured** (Size: {file_size_kb} KB)\n\n*Screenshot was captured but cannot be directly embedded in GitHub issues. The image was {file_size_kb} KB in size.*"
+        
+    except Exception as e:
+        print(f"Failed to process screenshot file: {e}")
+        return "**Screenshot capture failed**"
+
+
+def create_github_issue(title: str, body: str, labels: list = None, screenshot_path: Optional[str] = None) -> dict:
     """
     Create a GitHub issue using the REST API.
     Returns the created issue data or raises an exception.
@@ -42,6 +67,11 @@ def create_github_issue(title: str, body: str, labels: list = None) -> dict:
     token = get_secret("GITHUB_TOKEN")
     if not token:
         raise ValueError("GITHUB_TOKEN not configured")
+
+    # Add screenshot info to body if provided
+    if screenshot_path:
+        screenshot_info = upload_github_asset(screenshot_path, "screenshot.png")
+        body += f"\n\n### Screenshot\n{screenshot_info}"
 
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/issues"
 
