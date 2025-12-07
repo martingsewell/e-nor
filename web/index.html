@@ -2118,6 +2118,7 @@
     let voiceSupported = false;
     let micPermissionGranted = false;
     let isSpeaking = false;
+    let recognitionRunning = false; // Track if recognition is already running (to avoid on/off notifications)
     let speechBuffer = '';
     let speechTimeout = null;
     let pendingAbortController = null; // For canceling requests if user keeps talking
@@ -2249,6 +2250,7 @@
       recognition.onstart = () => {
         console.log('Speech recognition started');
         micPermissionGranted = true;
+        recognitionRunning = true;
       };
     } else {
       voiceText.textContent = 'Voice not supported';
@@ -2328,9 +2330,11 @@
     async function startListening() {
       if (!voiceSupported || !recognition) return;
 
-      // NEVER start listening while E-NOR is speaking
-      if (isSpeaking) {
-        console.log('Blocked startListening - E-NOR is speaking');
+      // If recognition is already running, just update the UI state
+      // This prevents the on/off notification cycle
+      if (recognitionRunning) {
+        console.log('Recognition already running, just updating UI state');
+        setVoiceState(inConversation ? 'conversation' : 'listening', inConversation ? 'Listening...' : 'Say "Hey E-NOR"');
         return;
       }
 
@@ -2346,6 +2350,7 @@
       } catch (e) {
         if (e.name === 'InvalidStateError') {
           // Already started, that's fine
+          recognitionRunning = true;
         } else {
           console.error('Recognition start error:', e);
           setVoiceState('idle', 'Tap mic to start');
@@ -2353,10 +2358,19 @@
       }
     }
 
+    // muteInput: Clears the speech buffer but keeps recognition running
+    // This prevents notification sounds from microphone on/off cycling
+    function muteInput() {
+      speechBuffer = '';
+      if (speechTimeout) clearTimeout(speechTimeout);
+      console.log('Input muted (recognition still running)');
+    }
+
     function stopListening() {
       if (!recognition) return;
       try {
         recognition.abort(); // Use abort() instead of stop() for immediate halt
+        recognitionRunning = false;
       } catch (e) {}
     }
 
@@ -2457,10 +2471,10 @@
 
     function handleSpeechEnd() {
       console.log('Speech recognition ended, voiceMode:', voiceMode, 'isSpeaking:', isSpeaking);
-      // Restart listening ONLY if not speaking
-      if (!isSpeaking) {
-        setTimeout(startListening, 500);
-      }
+      recognitionRunning = false;
+      // Always restart recognition - we keep it always on now
+      // The isSpeaking flag in handleSpeechResult will ignore input while speaking
+      setTimeout(startListening, 500);
     }
 
     async function startConversation() {
@@ -2584,11 +2598,9 @@
           return;
         }
 
-        // Stop listening while speaking to prevent echo
+        // Mute input while speaking to prevent echo (but keep recognition running to avoid notifications)
         isSpeaking = true;
-        stopListening();
-        speechBuffer = '';
-        if (speechTimeout) clearTimeout(speechTimeout);
+        muteInput();
 
         // Cancel any ongoing speech and wait a moment (Chrome bug workaround)
         synthesis.cancel();
@@ -2636,14 +2648,12 @@
             isSpeaking = false;
             // Hide interrupt button
             interruptBtn.classList.remove('visible');
-            // Wait a moment before resuming listening to avoid catching echo
+            // Update voice state - recognition is already running (always on mode)
             setTimeout(() => {
               if (inConversation && !isSpeaking) {
                 setVoiceState('conversation', 'Listening...');
-                startListening();
               } else if (!inConversation) {
                 setVoiceState('listening', 'Say "Hey E-NOR"');
-                startListening();
               }
             }, 500);
             resolve();
@@ -2653,14 +2663,12 @@
             console.error('Speech synthesis error:', e.error, e);
             isSpeaking = false;
             interruptBtn.classList.remove('visible');
-            // Still try to resume listening
+            // Update voice state - recognition is already running (always on mode)
             setTimeout(() => {
               if (inConversation && !isSpeaking) {
                 setVoiceState('conversation', 'Listening...');
-                startListening();
               } else if (!inConversation) {
                 setVoiceState('listening', 'Say "Hey E-NOR"');
-                startListening();
               }
             }, 500);
             resolve();
@@ -2678,7 +2686,6 @@
               interruptBtn.classList.remove('visible');
               if (inConversation) {
                 setVoiceState('conversation', 'Listening...');
-                startListening();
               }
               resolve();
             }
