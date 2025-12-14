@@ -8,6 +8,7 @@ import random
 import base64
 import tempfile
 import os
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -222,10 +223,25 @@ You are speaking directly to Ronnie unless told otherwise."""
 
 
 def get_system_prompt() -> str:
-    """Get the full system prompt with memories and pending requests included"""
+    """Get the full system prompt with memories, pending requests, and current date/time included"""
+    # Get current date and time
+    now = datetime.now()
+    current_datetime = now.strftime("%A, %B %d, %Y at %I:%M %p")
+    current_date_only = now.strftime("%A, %B %d, %Y") 
+    current_time_only = now.strftime("%I:%M %p")
+    
+    # Create date/time context
+    datetime_context = f"""
+
+CURRENT DATE AND TIME: {current_datetime}
+- Today is {current_date_only}
+- The current time is {current_time_only}
+- You can help with schedules, time-related questions, and tell Ronnie what day/time it is when asked.
+"""
+    
     memories = get_memories_for_prompt()
     pending_requests = get_requests_for_prompt()
-    return SYSTEM_PROMPT_BASE + memories + pending_requests
+    return SYSTEM_PROMPT_BASE + datetime_context + memories + pending_requests
 
 
 class ChatMessage(BaseModel):
