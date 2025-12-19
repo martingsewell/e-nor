@@ -560,6 +560,57 @@
       50% { transform: translateX(-50%) scale(1.05); }
     }
 
+    /* Your Turn Indicator - shows after cooldown when ready for input */
+    #your-turn-indicator {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #00cc00, #00ff00);
+      color: #000;
+      border: none;
+      border-radius: 30px;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 255, 0, 0.5);
+      animation: yourTurnPulse 0.8s ease-in-out infinite;
+    }
+    #your-turn-indicator.visible {
+      display: block;
+    }
+    @keyframes yourTurnPulse {
+      0%, 100% {
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 4px 20px rgba(0, 255, 0, 0.5);
+      }
+      50% {
+        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 4px 30px rgba(0, 255, 0, 0.8);
+      }
+    }
+
+    /* Enhanced voice status for "Your turn" state */
+    #voice-status.your-turn {
+      background: linear-gradient(135deg, #002200, #004400);
+      color: #00ff00;
+      font-weight: bold;
+      padding: 8px 15px;
+      font-size: 14px;
+      animation: yourTurnStatusPulse 0.8s infinite;
+    }
+    #voice-status.your-turn #voice-dot {
+      background: #00ff00;
+      width: 12px;
+      height: 12px;
+    }
+    @keyframes yourTurnStatusPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
     /* Settings Modal */
     #settings-modal {
       display: none;
@@ -1326,6 +1377,9 @@
 
   <!-- Interrupt button - outside chat so visible when chat hidden -->
   <button id="interrupt-btn" onclick="interruptSpeech()">TAP TO INTERRUPT</button>
+
+  <!-- Your Turn indicator - shows after E-NOR finishes speaking -->
+  <div id="your-turn-indicator">YOUR TURN</div>
 
   <!-- Settings Modal -->
   <div id="settings-modal">
@@ -2426,6 +2480,13 @@
     let isProcessing = false; // True during API call
     const SILENCE_DELAY = 2000; // Wait 2 seconds of silence before processing
 
+    // Persistent audio stream - keeps mic active to prevent Android notification sounds
+    let persistentAudioStream = null;
+    let voiceAudioContext = null;
+    let cooldownActive = false; // True during post-speech cooldown (prevents echo)
+    const COOLDOWN_DELAY = 400; // ms to wait after E-NOR finishes speaking
+    let yourTurnTimeout = null; // Timeout for hiding "your turn" indicator
+
     // Voice selection
     let selectedVoice = null;
     let availableVoices = [];
@@ -2570,17 +2631,50 @@
       }
     }
 
-    async function requestMicPermission() {
+    // Initialize persistent audio stream - keeps mic active to prevent Android notification sounds
+    async function initPersistentAudioStream() {
       try {
-        // First try to check permission status without triggering notification sounds
+        // Get a persistent stream - this is the ONLY getUserMedia call
+        // Keeping this stream alive prevents repeated Android notification sounds
+        persistentAudioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        // Create AudioContext for voice features (beep sounds, etc.)
+        voiceAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Connect stream to AudioContext (for potential future audio processing)
+        const source = voiceAudioContext.createMediaStreamSource(persistentAudioStream);
+        const gainNode = voiceAudioContext.createGain();
+        source.connect(gainNode);
+        // Note: Don't connect to destination - we don't want to hear ourselves
+
+        micPermissionGranted = true;
+        console.log('Persistent audio stream initialized - mic will stay active');
+        return true;
+      } catch (e) {
+        console.error('Failed to initialize persistent audio stream:', e);
+        return false;
+      }
+    }
+
+    async function requestMicPermission() {
+      // If we already have a persistent stream that's active, we're good
+      if (persistentAudioStream && persistentAudioStream.active) {
+        console.log('Persistent audio stream already active');
+        return true;
+      }
+
+      try {
+        // First check permission status
         if ('permissions' in navigator) {
           try {
             const permission = await navigator.permissions.query({ name: 'microphone' });
-            if (permission.state === 'granted') {
-              micPermissionGranted = true;
-              console.log('Microphone permission already granted (silent check)');
-              return true;
-            } else if (permission.state === 'denied') {
+            if (permission.state === 'denied') {
               console.log('Microphone permission previously denied');
               setVoiceState('idle', 'Mic denied - tap for help');
               showMicHelp();
@@ -2590,19 +2684,20 @@
             console.log('Permission query failed, will request directly');
           }
         }
-        
-        // Only request if we need to (reduces notification sounds)
-        console.log('Requesting microphone permission (may trigger system sound)');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop the stream immediately - we just needed permission
-        stream.getTracks().forEach(track => track.stop());
-        micPermissionGranted = true;
-        console.log('Microphone permission granted');
+
+        // Initialize the persistent stream (single notification sound on Android)
+        console.log('Initializing persistent audio stream...');
+        const success = await initPersistentAudioStream();
+        if (!success) {
+          setVoiceState('idle', 'Mic denied - tap for help');
+          showMicHelp();
+          return false;
+        }
+
         return true;
       } catch (e) {
         console.error('Microphone permission denied:', e);
         setVoiceState('idle', 'Mic denied - tap for help');
-        // Show help message in chat
         showMicHelp();
         return false;
       }
@@ -2676,11 +2771,14 @@
     }
 
     function handleSpeechResult(event) {
-      // Ignore speech while E-NOR is speaking (prevents echo)
-      if (isSpeaking) {
-        console.log('Ignoring speech - E-NOR is speaking');
+      // Ignore speech while E-NOR is speaking OR during cooldown (prevents echo)
+      if (isSpeaking || cooldownActive) {
+        console.log('Ignoring speech - isSpeaking:', isSpeaking, 'cooldownActive:', cooldownActive);
         return;
       }
+
+      // User started speaking - hide "your turn" indicator
+      hideYourTurnIndicator();
 
       const last = event.results.length - 1;
       const result = event.results[last];
@@ -2950,32 +3048,49 @@
           utterance.onend = () => {
             console.log('Speech ended successfully');
             isSpeaking = false;
+
+            // Start cooldown period - ignore all input during this time (prevents echo)
+            cooldownActive = true;
+            console.log('Cooldown started (' + COOLDOWN_DELAY + 'ms)');
+
             // Hide interrupt button
             interruptBtn.classList.remove('visible');
-            // Update voice state - recognition is already running (always on mode)
+
+            // After cooldown, signal "your turn"
             setTimeout(() => {
+              cooldownActive = false;
+              console.log('Cooldown ended - ready for input');
+
               if (inConversation && !isSpeaking) {
-                setVoiceState('conversation', 'Listening...');
+                // Play beep and show visual indicator
+                playYourTurnBeep();
+                showYourTurnIndicator();
+                setVoiceState('conversation', 'Your turn!');
               } else if (!inConversation) {
                 setVoiceState('listening', 'Say "Hey E-NOR"');
               }
-            }, 500);
-            resolve();
+              resolve();
+            }, COOLDOWN_DELAY);
           };
 
           utterance.onerror = (e) => {
             console.error('Speech synthesis error:', e.error, e);
             isSpeaking = false;
             interruptBtn.classList.remove('visible');
-            // Update voice state - recognition is already running (always on mode)
+
+            // Still do cooldown on error to prevent echo from partial speech
+            cooldownActive = true;
             setTimeout(() => {
+              cooldownActive = false;
               if (inConversation && !isSpeaking) {
-                setVoiceState('conversation', 'Listening...');
+                playYourTurnBeep();
+                showYourTurnIndicator();
+                setVoiceState('conversation', 'Your turn!');
               } else if (!inConversation) {
                 setVoiceState('listening', 'Say "Hey E-NOR"');
               }
-            }, 500);
-            resolve();
+              resolve();
+            }, COOLDOWN_DELAY);
           };
 
           console.log('Calling synthesis.speak()...');
@@ -2988,10 +3103,16 @@
               console.warn('Speech appears stuck, forcing resume');
               isSpeaking = false;
               interruptBtn.classList.remove('visible');
-              if (inConversation) {
-                setVoiceState('conversation', 'Listening...');
-              }
-              resolve();
+              cooldownActive = true;
+              setTimeout(() => {
+                cooldownActive = false;
+                if (inConversation) {
+                  playYourTurnBeep();
+                  showYourTurnIndicator();
+                  setVoiceState('conversation', 'Your turn!');
+                }
+                resolve();
+              }, COOLDOWN_DELAY);
             }
           }, 10000); // 10 second safety timeout
         }, 100); // 100ms delay after cancel
@@ -3002,12 +3123,81 @@
       if (isSpeaking && synthesis) {
         synthesis.cancel();
         isSpeaking = false;
+        cooldownActive = false; // Cancel cooldown too
         // Hide interrupt button
         document.getElementById('interrupt-btn').classList.remove('visible');
         if (inConversation) {
           setVoiceState('conversation', 'Listening...');
           setTimeout(() => startListening(), 300);
         }
+      }
+    }
+
+    // Play a pleasant "your turn" beep using Web Audio API
+    function playYourTurnBeep() {
+      // Use existing audioCtx or create new one
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const now = audioCtx.currentTime;
+
+      // Create a pleasant two-tone "ding" sound
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);  // A5 note
+      osc2.frequency.setValueAtTime(1320, now); // E6 note (perfect fifth above)
+
+      gainNode.gain.setValueAtTime(0.25, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.15);
+      osc2.stop(now + 0.15);
+
+      console.log('Played "your turn" beep');
+    }
+
+    // Show the "Your Turn" indicator
+    function showYourTurnIndicator() {
+      const indicator = document.getElementById('your-turn-indicator');
+      const voiceStatus = document.getElementById('voice-status');
+
+      indicator.classList.add('visible');
+      voiceStatus.classList.add('your-turn');
+
+      // Clear any existing timeout
+      if (yourTurnTimeout) clearTimeout(yourTurnTimeout);
+
+      // Hide after 2 seconds or when user starts speaking
+      yourTurnTimeout = setTimeout(() => {
+        hideYourTurnIndicator();
+      }, 2000);
+    }
+
+    // Hide the "Your Turn" indicator
+    function hideYourTurnIndicator() {
+      const indicator = document.getElementById('your-turn-indicator');
+      const voiceStatus = document.getElementById('voice-status');
+
+      indicator.classList.remove('visible');
+      voiceStatus.classList.remove('your-turn');
+
+      if (yourTurnTimeout) {
+        clearTimeout(yourTurnTimeout);
+        yourTurnTimeout = null;
       }
     }
 
@@ -3109,17 +3299,20 @@
         await waitForVoices();
         console.log('Voices loaded:', voicesLoaded);
 
-        // Check mic permission
+        // Initialize persistent audio stream (prevents Android notification sounds)
         if (voiceSupported) {
           try {
             const permission = await navigator.permissions.query({ name: 'microphone' });
             if (permission.state === 'granted') {
-              micPermissionGranted = true;
-              micReady = true;
-              console.log('Mic permission already granted');
+              // Initialize persistent stream right away
+              const success = await initPersistentAudioStream();
+              if (success) {
+                micReady = true;
+                console.log('Persistent audio stream initialized at startup');
+              }
             }
           } catch (err) {
-            console.log('Permissions API not supported');
+            console.log('Permissions API not supported, will request on first use');
           }
         }
 
