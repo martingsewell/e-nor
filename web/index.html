@@ -2841,10 +2841,15 @@
     }
 
     function handleSpeechEnd() {
-      console.log('Speech recognition ended, voiceMode:', voiceMode, 'isSpeaking:', isSpeaking);
+      console.log('Speech recognition ended, voiceMode:', voiceMode, 'isSpeaking:', isSpeaking, 'cooldownActive:', cooldownActive);
       recognitionRunning = false;
-      // Always restart recognition - we keep it always on now
-      // The isSpeaking flag in handleSpeechResult will ignore input while speaking
+
+      // DON'T restart during cooldown - we'll start fresh after cooldown ends
+      if (cooldownActive || isSpeaking) {
+        console.log('Not restarting recognition - cooldown or speaking active');
+        return;
+      }
+
       setTimeout(startListening, 500);
     }
 
@@ -3040,8 +3045,14 @@
             // After cooldown, signal "your turn" and start fresh recognition
             setTimeout(() => {
               cooldownActive = false;
-              speechBuffer = ''; // Clear any buffered speech
-              console.log('Cooldown ended - ready for input');
+
+              // Clear any buffered speech and cancel pending API calls
+              speechBuffer = '';
+              if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+              }
+              console.log('Cooldown ended - buffer cleared, ready for input');
 
               if (inConversation && !isSpeaking) {
                 // Play beep and show visual indicator
@@ -3076,6 +3087,10 @@
             setTimeout(() => {
               cooldownActive = false;
               speechBuffer = '';
+              if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+              }
               if (inConversation && !isSpeaking) {
                 playYourTurnBeep();
                 showYourTurnIndicator();
@@ -3112,6 +3127,10 @@
               setTimeout(() => {
                 cooldownActive = false;
                 speechBuffer = '';
+                if (speechTimeout) {
+                  clearTimeout(speechTimeout);
+                  speechTimeout = null;
+                }
                 if (inConversation) {
                   playYourTurnBeep();
                   showYourTurnIndicator();
