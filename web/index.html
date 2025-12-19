@@ -2480,10 +2480,8 @@
     let isProcessing = false; // True during API call
     const SILENCE_DELAY = 2000; // Wait 2 seconds of silence before processing
 
-    // Persistent audio stream - keeps mic active to prevent Android notification sounds
-    let persistentAudioStream = null;
-    let voiceAudioContext = null;
-    let cooldownActive = false; // True during post-speech cooldown (prevents echo)
+    // Cooldown prevents echo by ignoring input briefly after E-NOR speaks
+    let cooldownActive = false;
     const COOLDOWN_DELAY = 400; // ms to wait after E-NOR finishes speaking
     let yourTurnTimeout = null; // Timeout for hiding "your turn" indicator
 
@@ -2631,50 +2629,25 @@
       }
     }
 
-    // Initialize persistent audio stream - keeps mic active to prevent Android notification sounds
-    async function initPersistentAudioStream() {
-      try {
-        // Get a persistent stream - this is the ONLY getUserMedia call
-        // Keeping this stream alive prevents repeated Android notification sounds
-        persistentAudioStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-
-        // Create AudioContext for voice features (beep sounds, etc.)
-        voiceAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        // Connect stream to AudioContext (for potential future audio processing)
-        const source = voiceAudioContext.createMediaStreamSource(persistentAudioStream);
-        const gainNode = voiceAudioContext.createGain();
-        source.connect(gainNode);
-        // Note: Don't connect to destination - we don't want to hear ourselves
-
-        micPermissionGranted = true;
-        console.log('Persistent audio stream initialized - mic will stay active');
-        return true;
-      } catch (e) {
-        console.error('Failed to initialize persistent audio stream:', e);
-        return false;
-      }
-    }
+    // Note: We don't use getUserMedia for the persistent stream because it conflicts
+    // with SpeechRecognition on Android. SpeechRecognition manages its own mic access.
 
     async function requestMicPermission() {
-      // If we already have a persistent stream that's active, we're good
-      if (persistentAudioStream && persistentAudioStream.active) {
-        console.log('Persistent audio stream already active');
+      // Check if we already have permission
+      if (micPermissionGranted) {
         return true;
       }
 
       try {
-        // First check permission status
+        // First check permission status without triggering notification
         if ('permissions' in navigator) {
           try {
             const permission = await navigator.permissions.query({ name: 'microphone' });
-            if (permission.state === 'denied') {
+            if (permission.state === 'granted') {
+              micPermissionGranted = true;
+              console.log('Microphone permission already granted');
+              return true;
+            } else if (permission.state === 'denied') {
               console.log('Microphone permission previously denied');
               setVoiceState('idle', 'Mic denied - tap for help');
               showMicHelp();
@@ -2685,15 +2658,13 @@
           }
         }
 
-        // Initialize the persistent stream (single notification sound on Android)
-        console.log('Initializing persistent audio stream...');
-        const success = await initPersistentAudioStream();
-        if (!success) {
-          setVoiceState('idle', 'Mic denied - tap for help');
-          showMicHelp();
-          return false;
-        }
-
+        // Request permission by briefly accessing the mic
+        console.log('Requesting microphone permission...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop the stream immediately - SpeechRecognition will use its own access
+        stream.getTracks().forEach(track => track.stop());
+        micPermissionGranted = true;
+        console.log('Microphone permission granted');
         return true;
       } catch (e) {
         console.error('Microphone permission denied:', e);
@@ -3299,17 +3270,14 @@
         await waitForVoices();
         console.log('Voices loaded:', voicesLoaded);
 
-        // Initialize persistent audio stream (prevents Android notification sounds)
+        // Check mic permission status (don't request yet - SpeechRecognition will handle it)
         if (voiceSupported) {
           try {
             const permission = await navigator.permissions.query({ name: 'microphone' });
             if (permission.state === 'granted') {
-              // Initialize persistent stream right away
-              const success = await initPersistentAudioStream();
-              if (success) {
-                micReady = true;
-                console.log('Persistent audio stream initialized at startup');
-              }
+              micPermissionGranted = true;
+              micReady = true;
+              console.log('Mic permission already granted');
             }
           } catch (err) {
             console.log('Permissions API not supported, will request on first use');
