@@ -54,6 +54,11 @@ DEFAULT_CONFIG = {
     "github": {
         "owner": "",
         "repo": ""
+    },
+    "voice": {
+        "gender": "female",
+        "rate": "1.0",
+        "pitch": "1.0"
     }
 }
 
@@ -229,6 +234,12 @@ class WakeWordAdd(BaseModel):
     variant: str
 
 
+class VoiceConfig(BaseModel):
+    gender: str = "female"
+    rate: str = "1.0"
+    pitch: str = "1.0"
+
+
 # API Endpoints
 
 @router.get("")
@@ -392,3 +403,34 @@ async def get_setup_status() -> Dict:
         "child_name": get_child_name(),
         "child_age": get_child_age()
     }
+
+
+@router.get("/voice")
+async def get_voice_config() -> Dict:
+    """Get voice configuration"""
+    config = load_config()
+    return config.get("voice", {"gender": "female", "rate": "1.0", "pitch": "1.0"})
+
+
+@router.put("/voice")
+async def update_voice_config(voice: VoiceConfig) -> Dict:
+    """Update voice configuration"""
+    config = load_config()
+
+    # Validate values
+    valid_genders = ["female", "male"]
+    valid_rates = ["0.8", "1.0", "1.2"]
+    valid_pitches = ["0.8", "1.0", "1.2"]
+
+    gender = voice.gender if voice.gender in valid_genders else "female"
+    rate = voice.rate if voice.rate in valid_rates else "1.0"
+    pitch = voice.pitch if voice.pitch in valid_pitches else "1.0"
+
+    config["voice"] = {
+        "gender": gender,
+        "rate": rate,
+        "pitch": pitch
+    }
+
+    success = save_config(config)
+    return {"success": success, "voice": config["voice"]}

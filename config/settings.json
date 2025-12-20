@@ -64,5 +64,10 @@
   "github": {
     "owner": "martingsewell",
     "repo": "e-nor"
+  },
+  "voice": {
+    "gender": "female",
+    "rate": "1.0",
+    "pitch": "1.0"
   }
 }
