@@ -1621,6 +1621,7 @@
       child: { name: '', age: null },
       wake_words: { primary: 'hey enor', variants: [] },
       features: { voice_enabled: true, disco_mode_enabled: true },
+      voice: { gender: 'female', rate: '1.0', pitch: '1.0' },
       _computed: { all_wake_words: ['hey enor', 'enor', 'e-nor'] }
     };
 
@@ -3201,22 +3202,43 @@
         // Small delay after cancel (Chrome needs this)
         setTimeout(() => {
           const utterance = new SpeechSynthesisUtterance(text);
-          utterance.rate = 1.0;
-          utterance.pitch = 1.1;
+
+          // Use voice settings from config
+          const voiceRate = parseFloat(robotConfig.voice?.rate || '1.0');
+          const voicePitch = parseFloat(robotConfig.voice?.pitch || '1.0');
+          const voiceGender = robotConfig.voice?.gender || 'female';
+
+          utterance.rate = voiceRate;
+          utterance.pitch = voicePitch;
           utterance.volume = 1.0;
 
-          // Use selected voice or fallback to preferred voice
+          // Use selected voice or fallback to preferred voice based on gender config
           let voiceToUse = selectedVoice;
-          
+
           if (!voiceToUse) {
             const voices = synthesis.getVoices();
-            console.log('No voice selected, using fallback. Available voices:', voices.length);
+            console.log('No voice selected, using fallback. Gender:', voiceGender, 'Available voices:', voices.length);
 
-            voiceToUse = voices.find(v =>
-              v.name.includes('Daniel') ||
-              v.name.includes('Google UK English Male') ||
-              v.name.includes('English United Kingdom')
-            ) || voices.find(v => v.lang.startsWith('en'));
+            // Find voice based on gender preference from config
+            if (voiceGender === 'male') {
+              voiceToUse = voices.find(v => {
+                const name = v.name.toLowerCase();
+                return v.lang.startsWith('en') && (
+                  name.includes('male') || name.includes('daniel') || name.includes('james') ||
+                  name.includes('david') || name.includes('mark') || name.includes('alex') ||
+                  name.includes('google uk english male')
+                );
+              }) || voices.find(v => v.lang.startsWith('en'));
+            } else {
+              voiceToUse = voices.find(v => {
+                const name = v.name.toLowerCase();
+                return v.lang.startsWith('en') && (
+                  name.includes('female') || name.includes('samantha') || name.includes('karen') ||
+                  name.includes('victoria') || name.includes('zira') || name.includes('susan') ||
+                  name.includes('google uk english female')
+                );
+              }) || voices.find(v => v.lang.startsWith('en'));
+            }
           }
 
           if (voiceToUse) {
