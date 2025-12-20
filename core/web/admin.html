@@ -905,20 +905,34 @@
     function testVoice() {
       const gender = document.getElementById('voice-gender').value;
       const rate = parseFloat(document.getElementById('voice-rate').value);
-      const pitch = parseFloat(document.getElementById('voice-pitch').value);
+      const pitchSetting = parseFloat(document.getElementById('voice-pitch').value);
+
+      // Apply gender-based pitch adjustment (same as main UI)
+      const genderPitchAdjust = gender === 'male' ? 0.85 : 1.15;
+      const finalPitch = Math.max(0.5, Math.min(2.0, pitchSetting * genderPitchAdjust));
 
       const utterance = new SpeechSynthesisUtterance("Hello! I'm E-NOR, your robot friend. How does this voice sound?");
       utterance.rate = rate;
-      utterance.pitch = pitch;
+      utterance.pitch = finalPitch;
 
-      // Find a voice matching the gender preference
+      // Find a voice matching the gender preference (handles multiple platforms)
       const voices = speechSynthesis.getVoices();
       const preferredVoice = voices.find(v => {
         const name = v.name.toLowerCase();
         if (gender === 'female') {
-          return v.lang.startsWith('en') && (name.includes('female') || name.includes('samantha') || name.includes('karen') || name.includes('victoria') || name.includes('zira') || name.includes('susan'));
+          return v.lang.startsWith('en') && (
+            name.includes('female') || name.includes('samantha') || name.includes('karen') ||
+            name.includes('victoria') || name.includes('zira') || name.includes('susan') ||
+            name.includes('fiona') || name.includes('moira') || name.includes('tessa') ||
+            name.includes('en-us-x-sfg#female') || name.includes('en-gb-x-gba#female')
+          );
         } else {
-          return v.lang.startsWith('en') && (name.includes('male') || name.includes('daniel') || name.includes('james') || name.includes('david') || name.includes('mark') || name.includes('alex'));
+          return v.lang.startsWith('en') && (
+            name.includes('male') || name.includes('daniel') || name.includes('james') ||
+            name.includes('david') || name.includes('mark') || name.includes('alex') ||
+            name.includes('guy') || name.includes('tom') || name.includes('lee') ||
+            name.includes('en-us-x-sfg#male') || name.includes('en-gb-x-gba#male')
+          );
         }
       }) || voices.find(v => v.lang.startsWith('en'));
 
