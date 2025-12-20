@@ -69,22 +69,53 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           direct_prompt: |
-            You are implementing a feature request for E-NOR, a friendly robot companion.
+            You are implementing an EXTENSION for E-NOR, a friendly robot companion.
 
             ## Request
             ${{ github.event.issue.title }}
 
             ${{ github.event.issue.body }}
 
-            ## Important Guidelines
-            - This is a Raspberry Pi 5 robot project for a 9-year-old named Ronnie
-            - The main files are in web/index.html (frontend) and server/*.py (backend)
-            - Follow existing code patterns and style
-            - Keep changes minimal and focused
-            - Test that existing features still work
-            - Make sure the face emotions and disco mode still function
+            ## CRITICAL RULES - READ CAREFULLY
 
-            Please implement this request, commit your changes, and push to a new branch.
+            ### You CAN ONLY create files in extensions/ folder:
+            - Create a new folder: extensions/{extension_name}/
+            - Required: manifest.json with id, name, description, version, type, enabled, voice_triggers
+            - Optional: handler.py, emotion.json, jokes.json, overlay.svg, sounds/, ui.html
+
+            ### You CANNOT modify:
+            - core/ folder (FORBIDDEN)
+            - config/ folder (FORBIDDEN)
+            - hardware/ folder (FORBIDDEN)
+            - Any other existing files
+
+            ### Extension manifest template:
+            ```json
+            {
+              "id": "extension_id",
+              "name": "Extension Name",
+              "description": "What it does",
+              "version": "1.0.0",
+              "author": "Voice request",
+              "type": "feature",
+              "enabled": true,
+              "voice_triggers": [{"phrases": ["trigger phrase"], "action": "action_name"}],
+              "provides": {"emotions": false, "jokes": false, "overlay": false, "sounds": false, "handler": false}
+            }
+            ```
+
+            ### Handler template (handler.py):
+            ```python
+            from core.server.extension_api import ExtensionAPI
+            api = ExtensionAPI("extension_id")
+
+            async def handle_action(action: str, params: dict):
+                if action == "action_name":
+                    api.speak("Response text")
+                    return {"success": True}
+            ```
+
+            Please create ONLY the extension files, commit, and push to a new branch.
           allowed_tools: "Edit,Write,Read,Bash,Glob,Grep"
           timeout_minutes: 10
 

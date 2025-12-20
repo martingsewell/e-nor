@@ -254,7 +254,7 @@ api.move(action, params)     # Trigger motor movement
         data = {
             "title": f"[Extension] {title}",
             "body": body,
-            "labels": ["extension", "automated", "voice-request"]
+            "labels": ["enor-request", "extension", "voice-request"]
         }
 
         headers = {
