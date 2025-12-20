@@ -2483,7 +2483,7 @@
     // Cooldown prevents echo by ignoring input briefly after E-NOR speaks
     // Needs to be long enough for speech recognition latency (audio → Google → result)
     let cooldownActive = false;
-    const COOLDOWN_DELAY = 1200; // ms to wait after E-NOR finishes speaking
+    const COOLDOWN_DELAY = 600; // ms to wait after E-NOR finishes speaking
     let yourTurnTimeout = null; // Timeout for hiding "your turn" indicator
 
     // Voice selection
