@@ -782,7 +782,7 @@
       transform: translateX(24px);
     }
 
-    /* Versions Modal */
+    /* Extensions Modal */
     #versions-modal {
       display: none;
       position: fixed;
@@ -790,7 +790,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.9);
+      background: rgba(0,0,0,0.95);
       z-index: 1000;
       flex-direction: column;
       padding: 20px;
@@ -802,7 +802,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     #versions-header h2 {
       color: #00ffff;
@@ -818,85 +818,208 @@
     }
     #close-versions:hover { opacity: 1; }
 
+    #extensions-summary {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    /* Extension Items */
+    .extension-item {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 4px solid #00ffff;
+    }
+    .extension-item.disabled {
+      opacity: 0.6;
+      border-left-color: #666;
+    }
+
+    .extension-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .extension-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .extension-name {
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .extension-version {
+      background: #333;
+      color: #888;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+    .extension-description {
+      color: #aaa;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .extension-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .extension-type {
+      background: #2a2a4e;
+      color: #00ffff;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .extension-badge {
+      background: #1a3a1a;
+      color: #00ff00;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+    }
+
+    /* Extension Toggle Switch */
+    .extension-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    .extension-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #333;
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .extension-toggle input:checked + .toggle-slider {
+      background-color: #00ff00;
+    }
+    .extension-toggle input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Extension Version History */
+    .extension-versions {
+      margin-top: 10px;
+    }
+    .extension-versions summary {
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 6px 0;
+    }
+    .extension-versions summary:hover {
+      color: #aaa;
+    }
+    .version-list {
+      margin-top: 8px;
+      padding-left: 10px;
+      border-left: 2px solid #333;
+    }
+    .version-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 4px;
+      background: #111;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .version-entry.working { border-left: 2px solid #00ff00; }
+    .version-entry.broken { border-left: 2px solid #ff4444; }
+    .version-entry.testing { border-left: 2px solid #ffaa00; }
+    .version-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #ccc;
+    }
+    .version-status-icon {
+      font-size: 14px;
+    }
+    .version-time {
+      color: #666;
+      font-size: 11px;
+    }
+    .version-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .small-btn {
+      padding: 4px 10px;
+      background: #333;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .small-btn:hover {
+      background: #444;
+    }
+
+    /* Extension Actions */
+    .extension-actions {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .delete-extension-btn {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid #ff4444;
+      border-radius: 6px;
+      color: #ff4444;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .delete-extension-btn:hover {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    /* Legacy - keep for compatibility */
+    #current-version-info {
+      display: none;
+    }
     .version-item {
       background: #1a1a2e;
       border-radius: 10px;
       padding: 15px;
       margin-bottom: 10px;
       border-left: 4px solid #333;
-    }
-    .version-item.current {
-      border-left-color: #00ff00;
-      background: #0d1a0d;
-    }
-    .version-item.working { border-left-color: #00ff00; }
-    .version-item.broken { border-left-color: #ff4444; }
-    .version-item.testing { border-left-color: #ffaa00; }
-
-    .version-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .version-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .version-number {
-      background: #333;
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    .version-status {
-      font-size: 18px;
-    }
-    .version-description {
-      color: #ccc;
-      font-size: 16px;
-      margin-bottom: 5px;
-    }
-    .version-time {
-      color: #888;
-      font-size: 12px;
-    }
-    .version-actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-    }
-    .version-btn {
-      padding: 8px 15px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    .rollback-btn {
-      background: #ff6600;
-      color: #fff;
-    }
-    .rollback-btn:hover { background: #ff8833; }
-    .rollback-btn:disabled {
-      background: #333;
-      color: #666;
-      cursor: not-allowed;
-    }
-    .status-btn {
-      background: #333;
-      color: #ccc;
-    }
-    .status-btn:hover { background: #444; }
-
-    #current-version-info {
-      background: #0d1a0d;
-      border: 1px solid #00ff00;
-      border-radius: 10px;
       padding: 15px;
       margin-bottom: 20px;
     }
@@ -1419,20 +1542,19 @@
     </div>
   </div>
 
-  <!-- Versions Modal -->
+  <!-- Extensions Modal -->
   <div id="versions-modal">
     <div id="versions-header">
-      <h2>📝 E-NOR Version History</h2>
+      <h2>My Extensions</h2>
       <button id="close-versions" onclick="closeVersions()">&times;</button>
     </div>
 
-    <div id="current-version-info">
-      <h3>✅ Currently Running</h3>
-      <div id="current-version-display">Loading...</div>
+    <div id="extensions-summary">
+      <span id="extensions-count">0 extensions</span>
     </div>
 
     <div id="versions-list">
-      <!-- Versions will be loaded here -->
+      <!-- Extensions will be loaded here -->
     </div>
   </div>
 
@@ -2292,123 +2414,172 @@
       document.getElementById('settings-modal').classList.remove('visible');
     }
 
-    // ==================== Versions ====================
+    // ==================== Extensions ====================
     function openVersions() {
       document.getElementById('versions-modal').classList.add('visible');
-      loadVersions();
+      loadExtensions();
     }
 
     function closeVersions() {
       document.getElementById('versions-modal').classList.remove('visible');
     }
 
-    async function loadVersions() {
+    async function loadExtensions() {
       try {
-        const response = await fetch('/api/versions');
-        const data = await response.json();
-        
-        displayCurrentVersion(data.current_version);
-        displayVersionsList(data.versions);
+        // Load extensions list
+        const extResponse = await fetch('/api/extensions');
+        const extData = await extResponse.json();
+
+        // Load version history for all extensions
+        const versionsResponse = await fetch('/api/extension-versions');
+        const versionsData = await versionsResponse.json();
+
+        displayExtensionsList(extData.extensions, versionsData.extensions);
+
+        // Update count
+        document.getElementById('extensions-count').textContent =
+          `${extData.total} extension${extData.total !== 1 ? 's' : ''}`;
       } catch (error) {
-        console.error('Error loading versions:', error);
-        document.getElementById('current-version-display').innerHTML = 'Error loading versions';
-        document.getElementById('versions-list').innerHTML = '<div style="color: #ff4444;">Failed to load version history</div>';
+        console.error('Error loading extensions:', error);
+        document.getElementById('versions-list').innerHTML =
+          '<div style="color: #ff4444; text-align: center; padding: 20px;">Failed to load extensions</div>';
       }
     }
 
-    function displayCurrentVersion(currentVersion) {
-      const display = document.getElementById('current-version-display');
-      if (currentVersion) {
-        display.innerHTML = `
-          <div class="version-title">
-            <span class="version-number">v${currentVersion.version_number}</span>
-            <span class="version-status">${currentVersion.status_emoji}</span>
-            <span class="version-description">${currentVersion.description}</span>
-          </div>
-          <div class="version-time">${currentVersion.time_ago}</div>
-        `;
-      } else {
-        display.innerHTML = 'No version information available';
-      }
-    }
-
-    function displayVersionsList(versions) {
+    function displayExtensionsList(extensions, versionHistory) {
       const list = document.getElementById('versions-list');
-      
-      if (!versions || versions.length === 0) {
-        list.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No version history available</div>';
+
+      if (!extensions || extensions.length === 0) {
+        list.innerHTML = `
+          <div style="color: #888; text-align: center; padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">+</div>
+            <div>No extensions yet!</div>
+            <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+              Ask me to create something and I'll make it for you.
+            </div>
+          </div>`;
         return;
       }
 
-      list.innerHTML = versions.map(version => `
-        <div class="version-item ${version.is_current ? 'current' : ''} ${version.status}">
-          <div class="version-header">
-            <div class="version-title">
-              <span class="version-number">v${version.version_number}</span>
-              <span class="version-status">${version.status_emoji}</span>
-              ${version.is_current ? '<span style="color: #00ff00; font-size: 12px; background: rgba(0,255,0,0.1); padding: 2px 6px; border-radius: 3px;">CURRENT</span>' : ''}
+      list.innerHTML = extensions.map(ext => {
+        const versions = versionHistory[ext.id]?.versions || [];
+        const hasVersions = versions.length > 0;
+
+        return `
+          <div class="extension-item ${ext.enabled ? 'enabled' : 'disabled'}">
+            <div class="extension-header">
+              <div class="extension-info">
+                <span class="extension-name">${ext.name}</span>
+                <span class="extension-version">v${ext.version}</span>
+              </div>
+              <label class="extension-toggle">
+                <input type="checkbox" ${ext.enabled ? 'checked' : ''}
+                       onchange="toggleExtension('${ext.id}', this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="extension-description">${ext.description || 'No description'}</div>
+            <div class="extension-meta">
+              <span class="extension-type">${ext.type}</span>
+              ${ext.has_voice_triggers ? '<span class="extension-badge">Voice</span>' : ''}
+              ${ext.has_handler ? '<span class="extension-badge">Code</span>' : ''}
+            </div>
+            ${hasVersions ? `
+              <details class="extension-versions">
+                <summary>Version History (${versions.length})</summary>
+                <div class="version-list">
+                  ${versions.map(v => `
+                    <div class="version-entry ${v.status}">
+                      <span class="version-info">
+                        <span class="version-status-icon">${v.status_emoji}</span>
+                        ${v.description}
+                      </span>
+                      <span class="version-time">${v.time_ago}</span>
+                      <div class="version-actions">
+                        <button class="small-btn" onclick="rollbackExtension('${ext.id}', '${v.version_id}')">
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </details>
+            ` : ''}
+            <div class="extension-actions">
+              <button class="delete-extension-btn" onclick="deleteExtension('${ext.id}', '${ext.name}')">
+                Delete
+              </button>
             </div>
           </div>
-          <div class="version-description">${version.description}</div>
-          <div class="version-time">${version.time_ago}</div>
-          ${!version.is_current && version.backup_available ? `
-            <div class="version-actions">
-              <button class="version-btn rollback-btn" onclick="rollbackToVersion('${version.id}', '${version.description}')">
-                ⏪ Go Back to This Version
-              </button>
-              <button class="version-btn status-btn" onclick="updateVersionStatus('${version.id}', '${version.status === 'working' ? 'broken' : 'working'}')">
-                ${version.status === 'working' ? 'Mark as Broken' : 'Mark as Working'}
-              </button>
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
-    async function rollbackToVersion(versionId, description) {
-      if (!confirm(`Are you sure you want to go back to "${description}"?\n\nThis will change E-NOR's code back to how it was at that time.`)) {
+    async function toggleExtension(extensionId, enabled) {
+      try {
+        const response = await fetch(`/api/extensions/${extensionId}/enabled?enabled=${enabled}`, {
+          method: 'PUT'
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          alert('Failed to toggle extension');
+          loadExtensions(); // Refresh to show actual state
+        }
+      } catch (error) {
+        console.error('Toggle error:', error);
+        alert('Error toggling extension');
+        loadExtensions();
+      }
+    }
+
+    async function rollbackExtension(extensionId, versionId) {
+      if (!confirm('Restore this version? The current version will be backed up first.')) {
         return;
       }
 
       try {
-        const response = await fetch(`/api/versions/${versionId}/rollback`, {
+        const response = await fetch(`/api/extension-versions/${extensionId}/rollback/${versionId}`, {
           method: 'POST'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          alert('✅ Successfully rolled back to previous version!\n\nE-NOR will restart with the older code in about 1 minute.');
-          closeVersions();
-          // Refresh the page after a short delay to show changes
-          setTimeout(() => location.reload(), 2000);
+          alert('Extension restored! Reloading...');
+          // Reload extensions on the server
+          await fetch('/api/extensions/reload', { method: 'POST' });
+          loadExtensions();
         } else {
-          alert('❌ Failed to rollback: ' + (result.message || 'Unknown error'));
+          alert('Failed to restore: ' + (result.detail || 'Unknown error'));
         }
       } catch (error) {
         console.error('Rollback error:', error);
-        alert('❌ Error during rollback. Please try again.');
+        alert('Error restoring extension');
       }
     }
 
-    async function updateVersionStatus(versionId, newStatus) {
+    async function deleteExtension(extensionId, extensionName) {
+      if (!confirm(`Delete "${extensionName}"?\n\nThis cannot be undone.`)) {
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/versions/${versionId}/status`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
+        const response = await fetch(`/api/extensions/${extensionId}`, {
+          method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          loadVersions(); // Refresh the list
+          loadExtensions();
         } else {
-          alert('Failed to update status: ' + (result.message || 'Unknown error'));
+          alert('Failed to delete extension');
         }
       } catch (error) {
-        console.error('Status update error:', error);
-        alert('Error updating status. Please try again.');
+        console.error('Delete error:', error);
+        alert('Error deleting extension');
       }
     }
 
