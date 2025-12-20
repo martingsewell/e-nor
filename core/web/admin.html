@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-NOR Settings</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 0 30px;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      color: #00ffff;
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 15px;
+      color: #00ffff;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(0, 255, 255, 0.1);
+    }
+
+    .section-title {
+      color: #00ffff;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 20px;
+      background: #00ffff;
+      border-radius: 2px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #00ffff;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #00ffff;
+      color: #1a1a2e;
+    }
+
+    .btn-primary:hover {
+      background: #00cccc;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-danger {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #cc3333;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+
+    .inline-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .inline-form .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag .remove {
+      cursor: pointer;
+      color: #ff6666;
+      font-weight: bold;
+    }
+
+    .tag .remove:hover {
+      color: #ff4444;
+    }
+
+    .tag.primary {
+      background: rgba(0, 255, 255, 0.2);
+      border-color: #00ffff;
+    }
+
+    .memory-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .memory-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .memory-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .memory-text {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .extension-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .extension-info {
+      flex: 1;
+    }
+
+    .extension-name {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .extension-desc {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .extension-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 26px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+      position: absolute;
+      content: '';
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: #00ffff;
+    }
+
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(24px);
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 15px;
+    }
+
+    .stat {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00ffff;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 5px;
+    }
+
+    .status {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    .status-ok {
+      background: rgba(0, 255, 0, 0.2);
+      color: #00ff00;
+    }
+
+    .status-warn {
+      background: rgba(255, 165, 0, 0.2);
+      color: #ffa500;
+    }
+
+    .status-error {
+      background: rgba(255, 0, 0, 0.2);
+      color: #ff4444;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: #666;
+    }
+
+    .empty-state p {
+      margin-bottom: 15px;
+    }
+
+    .recording-indicator {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 15px;
+      background: rgba(255, 0, 0, 0.1);
+      border: 1px solid rgba(255, 0, 0, 0.3);
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .recording-indicator.active {
+      display: flex;
+    }
+
+    .recording-dot {
+      width: 12px;
+      height: 12px;
+      background: #ff4444;
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: #00aa00;
+    }
+
+    .toast.error {
+      background: #cc3333;
+    }
+
+    .age-display {
+      color: #00ffff;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+
+    .section-footer {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .limit-info {
+      font-size: 0.85rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>E-NOR Settings</h1>
+      <p class="subtitle">Parent Dashboard</p>
+      <a href="/" class="back-link">&larr; Back to E-NOR</a>
+    </header>
+
+    <!-- Robot Identity -->
+    <div class="section">
+      <h2 class="section-title">Robot Identity</h2>
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Robot Name</label>
+          <input type="text" id="robot-name" placeholder="E-NOR">
+        </div>
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="robot-display-name" placeholder="E-NOR">
+        </div>
+        <button class="btn-primary" onclick="saveRobotConfig()">Save</button>
+      </div>
+    </div>
+
+    <!-- Child Profile -->
+    <div class="section">
+      <h2 class="section-title">Child Profile</h2>
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="child-name" placeholder="Enter name">
+        </div>
+        <div class="form-group">
+          <label>Birthdate</label>
+          <input type="date" id="child-birthdate">
+        </div>
+        <div class="form-group">
+          <label>Pronouns</label>
+          <select id="child-pronouns">
+            <option value="he/him">he/him</option>
+            <option value="she/her">she/her</option>
+            <option value="they/them">they/them</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="saveChildConfig()">Save</button>
+      </div>
+      <div class="age-display" id="age-display"></div>
+    </div>
+
+    <!-- Wake Words -->
+    <div class="section">
+      <h2 class="section-title">Wake Word</h2>
+      <p style="color: #888; font-size: 0.85rem; margin-bottom: 15px;">
+        Say these words to wake up the robot. The more variants captured, the better the recognition.
+      </p>
+      <div class="form-group">
+        <label>Primary Wake Word</label>
+        <input type="text" id="primary-wake-word" placeholder="hey enor">
+      </div>
+      <div class="tag-list" id="wake-word-list">
+        <!-- Wake words loaded here -->
+      </div>
+      <div class="inline-form" style="margin-top: 15px;">
+        <div class="form-group">
+          <label>Add Variant</label>
+          <input type="text" id="new-wake-word" placeholder="Type or record a variant">
+        </div>
+        <button class="btn-secondary" onclick="addWakeWord()">Add</button>
+        <button class="btn-secondary" onclick="startWakeWordRecording()">Record</button>
+      </div>
+      <div class="recording-indicator" id="recording-indicator">
+        <div class="recording-dot"></div>
+        <span>Listening... Say your wake word</span>
+        <button class="btn-small btn-danger" onclick="stopWakeWordRecording()">Stop</button>
+      </div>
+    </div>
+
+    <!-- Memories -->
+    <div class="section">
+      <h2 class="section-title">Memories</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="memory-count">0</div>
+          <div class="stat-label">Memories</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="memory-max">50</div>
+          <div class="stat-label">Maximum</div>
+        </div>
+      </div>
+      <div class="memory-list" id="memory-list">
+        <!-- Memories loaded here -->
+      </div>
+      <div class="section-footer">
+        <div class="form-group" style="margin-bottom: 0; width: 150px;">
+          <label>Max Memories</label>
+          <input type="number" id="max-memories" value="50" min="10" max="200">
+        </div>
+        <div>
+          <button class="btn-secondary btn-small" onclick="saveMaxMemories()">Update Limit</button>
+          <button class="btn-danger btn-small" onclick="clearAllMemories()">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="section">
+      <h2 class="section-title">Features</h2>
+      <div class="extension-item">
+        <div class="extension-info">
+          <div class="extension-name">Voice Interface</div>
+          <div class="extension-desc">Allow voice commands and responses</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="feature-voice" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="extension-item">
+        <div class="extension-info">
+          <div class="extension-name">Disco Mode</div>
+          <div class="extension-desc">Fun dance mode with lights and music</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="feature-disco" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="extension-item">
+        <div class="extension-info">
+          <div class="extension-name">Extension Creation</div>
+          <div class="extension-desc">Allow creating new features via voice</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="feature-extensions" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="extension-item">
+        <div class="extension-info">
+          <div class="extension-name">Motor Control</div>
+          <div class="extension-desc">Physical movement control (when configured)</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="feature-motors" onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Extensions -->
+    <div class="section">
+      <h2 class="section-title">Extensions</h2>
+      <div id="extensions-list">
+        <div class="empty-state">
+          <p>No extensions installed yet.</p>
+          <p style="font-size: 0.85rem;">Extensions are created when the child asks for new features via voice!</p>
+        </div>
+      </div>
+      <div class="section-footer">
+        <span class="limit-info" id="extensions-count">0 extensions</span>
+        <button class="btn-secondary btn-small" onclick="reloadExtensions()">Reload Extensions</button>
+      </div>
+    </div>
+
+    <!-- Secrets -->
+    <div class="section">
+      <h2 class="section-title">API Keys</h2>
+      <div id="secrets-list">
+        <!-- Secrets loaded here -->
+      </div>
+    </div>
+
+    <!-- GitHub -->
+    <div class="section">
+      <h2 class="section-title">GitHub Integration</h2>
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Repository Owner</label>
+          <input type="text" id="github-owner" placeholder="username">
+        </div>
+        <div class="form-group">
+          <label>Repository Name</label>
+          <input type="text" id="github-repo" placeholder="e-nor">
+        </div>
+        <button class="btn-primary" onclick="saveGithubConfig()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // State
+    let config = {};
+    let memories = [];
+    let extensions = [];
+    let secrets = [];
+    let recognition = null;
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast show ${type}`;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Load all data
+    async function loadAll() {
+      await Promise.all([
+        loadConfig(),
+        loadMemories(),
+        loadExtensions(),
+        loadSecrets()
+      ]);
+    }
+
+    // Load config
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        config = await response.json();
+        populateConfigForm();
+      } catch (e) {
+        console.error('Failed to load config:', e);
+      }
+    }
+
+    // Populate form with config values
+    function populateConfigForm() {
+      document.getElementById('robot-name').value = config.robot?.name || '';
+      document.getElementById('robot-display-name').value = config.robot?.display_name || '';
+      document.getElementById('child-name').value = config.child?.name || '';
+      document.getElementById('child-birthdate').value = config.child?.birthdate || '';
+      document.getElementById('child-pronouns').value = config.child?.pronouns || 'they/them';
+      document.getElementById('primary-wake-word').value = config.wake_words?.primary || 'hey enor';
+      document.getElementById('github-owner').value = config.github?.owner || '';
+      document.getElementById('github-repo').value = config.github?.repo || '';
+      document.getElementById('max-memories').value = config.limits?.max_memories || 50;
+
+      // Features
+      document.getElementById('feature-voice').checked = config.features?.voice_enabled !== false;
+      document.getElementById('feature-disco').checked = config.features?.disco_mode_enabled !== false;
+      document.getElementById('feature-extensions').checked = config.features?.extension_creation_enabled !== false;
+      document.getElementById('feature-motors').checked = config.features?.motor_control_enabled === true;
+
+      // Age display
+      if (config._computed?.child_age) {
+        document.getElementById('age-display').textContent = `Age: ${config._computed.child_age} years old`;
+      }
+
+      // Wake words
+      renderWakeWords();
+    }
+
+    // Render wake word tags
+    function renderWakeWords() {
+      const list = document.getElementById('wake-word-list');
+      const variants = config.wake_words?.variants || [];
+      const primary = config.wake_words?.primary || 'hey enor';
+
+      list.innerHTML = `<div class="tag primary">${primary} (primary)</div>`;
+      variants.forEach(word => {
+        list.innerHTML += `
+          <div class="tag">
+            ${word}
+            <span class="remove" onclick="removeWakeWord('${word}')">&times;</span>
+          </div>
+        `;
+      });
+    }
+
+    // Save robot config
+    async function saveRobotConfig() {
+      try {
+        const response = await fetch('/api/config/robot', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('robot-name').value,
+            display_name: document.getElementById('robot-display-name').value
+          })
+        });
+        if (response.ok) {
+          showToast('Robot settings saved!');
+          loadConfig();
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Save child config
+    async function saveChildConfig() {
+      try {
+        const response = await fetch('/api/config/child', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('child-name').value,
+            birthdate: document.getElementById('child-birthdate').value,
+            pronouns: document.getElementById('child-pronouns').value
+          })
+        });
+        if (response.ok) {
+          showToast('Child profile saved!');
+          loadConfig();
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Add wake word
+    async function addWakeWord() {
+      const input = document.getElementById('new-wake-word');
+      const word = input.value.trim().toLowerCase();
+      if (!word) return;
+
+      try {
+        const response = await fetch('/api/config/wake-words', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ variant: word })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast('Wake word added!');
+          input.value = '';
+          loadConfig();
+        } else {
+          showToast(result.message || 'Failed to add', 'error');
+        }
+      } catch (e) {
+        showToast('Failed to add', 'error');
+      }
+    }
+
+    // Remove wake word
+    async function removeWakeWord(word) {
+      try {
+        const response = await fetch(`/api/config/wake-words/${encodeURIComponent(word)}`, {
+          method: 'DELETE'
+        });
+        if (response.ok) {
+          showToast('Wake word removed');
+          loadConfig();
+        }
+      } catch (e) {
+        showToast('Failed to remove', 'error');
+      }
+    }
+
+    // Wake word recording
+    function startWakeWordRecording() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showToast('Speech recognition not supported', 'error');
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        const result = event.results[event.results.length - 1];
+        const transcript = result[0].transcript.toLowerCase().trim();
+        document.getElementById('new-wake-word').value = transcript;
+
+        if (result.isFinal) {
+          stopWakeWordRecording();
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopWakeWordRecording();
+      };
+
+      recognition.start();
+      document.getElementById('recording-indicator').classList.add('active');
+    }
+
+    function stopWakeWordRecording() {
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+      }
+      document.getElementById('recording-indicator').classList.remove('active');
+    }
+
+    // Save features
+    async function saveFeatures() {
+      try {
+        const response = await fetch('/api/config/features', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voice_enabled: document.getElementById('feature-voice').checked,
+            disco_mode_enabled: document.getElementById('feature-disco').checked,
+            extension_creation_enabled: document.getElementById('feature-extensions').checked,
+            motor_control_enabled: document.getElementById('feature-motors').checked
+          })
+        });
+        if (response.ok) {
+          showToast('Features updated!');
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Save GitHub config
+    async function saveGithubConfig() {
+      try {
+        const response = await fetch('/api/config/github', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            owner: document.getElementById('github-owner').value,
+            repo: document.getElementById('github-repo').value
+          })
+        });
+        if (response.ok) {
+          showToast('GitHub settings saved!');
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Load memories
+    async function loadMemories() {
+      try {
+        const response = await fetch('/api/memories');
+        const data = await response.json();
+        memories = data.memories || [];
+        document.getElementById('memory-count').textContent = data.count || memories.length;
+        document.getElementById('memory-max').textContent = data.max || 50;
+        renderMemories();
+      } catch (e) {
+        console.error('Failed to load memories:', e);
+      }
+    }
+
+    function renderMemories() {
+      const list = document.getElementById('memory-list');
+      if (memories.length === 0) {
+        list.innerHTML = '<div class="empty-state"><p>No memories yet.</p></div>';
+        return;
+      }
+
+      list.innerHTML = memories.map((memory, i) => `
+        <div class="memory-item">
+          <span class="memory-text">${memory}</span>
+          <button class="btn-danger btn-small" onclick="deleteMemory(${i})">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteMemory(index) {
+      try {
+        const response = await fetch(`/api/memories/${index}`, { method: 'DELETE' });
+        if (response.ok) {
+          showToast('Memory deleted');
+          loadMemories();
+        }
+      } catch (e) {
+        showToast('Failed to delete', 'error');
+      }
+    }
+
+    async function clearAllMemories() {
+      if (!confirm('Are you sure you want to delete all memories?')) return;
+      try {
+        const response = await fetch('/api/memories', { method: 'DELETE' });
+        if (response.ok) {
+          showToast('All memories cleared');
+          loadMemories();
+        }
+      } catch (e) {
+        showToast('Failed to clear', 'error');
+      }
+    }
+
+    async function saveMaxMemories() {
+      try {
+        const response = await fetch('/api/config/limits', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            max_memories: parseInt(document.getElementById('max-memories').value)
+          })
+        });
+        if (response.ok) {
+          showToast('Limit updated!');
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Load extensions
+    async function loadExtensions() {
+      try {
+        const response = await fetch('/api/extensions');
+        const data = await response.json();
+        extensions = data.extensions || [];
+        document.getElementById('extensions-count').textContent = `${extensions.length} extension${extensions.length !== 1 ? 's' : ''}`;
+        renderExtensions();
+      } catch (e) {
+        console.error('Failed to load extensions:', e);
+      }
+    }
+
+    function renderExtensions() {
+      const list = document.getElementById('extensions-list');
+      if (extensions.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <p>No extensions installed yet.</p>
+            <p style="font-size: 0.85rem;">Extensions are created when the child asks for new features via voice!</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = extensions.map(ext => `
+        <div class="extension-item">
+          <div class="extension-info">
+            <div class="extension-name">${ext.name}</div>
+            <div class="extension-desc">${ext.description || 'No description'}</div>
+          </div>
+          <div class="extension-actions">
+            <label class="toggle">
+              <input type="checkbox" ${ext.enabled ? 'checked' : ''} onchange="toggleExtension('${ext.id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+            <button class="btn-danger btn-small" onclick="deleteExtension('${ext.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function toggleExtension(id, enabled) {
+      try {
+        await fetch(`/api/extensions/${id}/enabled?enabled=${enabled}`, { method: 'PUT' });
+        showToast(`Extension ${enabled ? 'enabled' : 'disabled'}`);
+      } catch (e) {
+        showToast('Failed to update', 'error');
+        loadExtensions();
+      }
+    }
+
+    async function deleteExtension(id) {
+      if (!confirm('Are you sure you want to delete this extension?')) return;
+      try {
+        const response = await fetch(`/api/extensions/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          showToast('Extension deleted');
+          loadExtensions();
+        }
+      } catch (e) {
+        showToast('Failed to delete', 'error');
+      }
+    }
+
+    async function reloadExtensions() {
+      try {
+        const response = await fetch('/api/extensions/reload', { method: 'POST' });
+        const data = await response.json();
+        showToast(data.message || 'Extensions reloaded');
+        loadExtensions();
+      } catch (e) {
+        showToast('Failed to reload', 'error');
+      }
+    }
+
+    // Load secrets
+    async function loadSecrets() {
+      try {
+        const response = await fetch('/api/secrets');
+        const data = await response.json();
+        secrets = data.templates || [];
+        renderSecrets();
+      } catch (e) {
+        console.error('Failed to load secrets:', e);
+      }
+    }
+
+    function renderSecrets() {
+      const list = document.getElementById('secrets-list');
+      list.innerHTML = secrets.map(secret => `
+        <div class="extension-item">
+          <div class="extension-info">
+            <div class="extension-name">${secret.label}</div>
+            <div class="extension-desc">${secret.hint}</div>
+          </div>
+          <div class="extension-actions">
+            <span class="status ${secret.configured ? 'status-ok' : 'status-warn'}">
+              ${secret.configured ? 'Configured' : 'Not Set'}
+            </span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Initialize
+    loadAll();
+  </script>
+</body>
+</html>
