@@ -1,0 +1,43 @@
+{
+  "id": "dog_mode",
+  "name": "Dog Mode",
+  "description": "A mode with floppy ears, tongue out, and fun dog sounds",
+  "version": "1.0.0",
+  "author": "Ronnie",
+  "type": "mode",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "dog mode",
+        "activate dog mode",
+        "turn on dog mode",
+        "become a dog",
+        "puppy mode",
+        "woof mode"
+      ],
+      "action": "activate_dog_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "deactivate dog mode",
+        "turn off dog mode",
+        "stop dog mode",
+        "normal mode",
+        "exit dog mode"
+      ],
+      "action": "deactivate_dog_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "bark",
+        "woof",
+        "make dog sounds"
+      ],
+      "action": "make_dog_sound",
+      "handler": "handle_action"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+<!-- Dog Mode Overlay: Floppy ears and tongue -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" id="dog_ears_tongue">
+  <!-- Left floppy ear -->
+  <ellipse cx="120" cy="100" rx="35" ry="55" fill="#8B4513" stroke="#654321" stroke-width="2" transform="rotate(-25 120 100)"/>
+  <ellipse cx="125" cy="105" rx="25" ry="40" fill="#CD853F" transform="rotate(-25 125 105)"/>
+  
+  <!-- Right floppy ear -->
+  <ellipse cx="280" cy="100" rx="35" ry="55" fill="#8B4513" stroke="#654321" stroke-width="2" transform="rotate(25 280 100)"/>
+  <ellipse cx="275" cy="105" rx="25" ry="40" fill="#CD853F" transform="rotate(25 275 105)"/>
+  
+  <!-- Tongue sticking out -->
+  <ellipse cx="200" cy="260" rx="20" ry="35" fill="#FF69B4" stroke="#FF1493" stroke-width="1.5"/>
+  <ellipse cx="200" cy="250" rx="15" ry="20" fill="#FF69B4"/>
+  
+  <!-- Dog nose (small black dot) -->
+  <circle cx="200" cy="220" r="8" fill="#333333"/>
+  <ellipse cx="198" cy="218" rx="2" ry="1" fill="#FFFFFF" opacity="0.8"/>
+  
+  <!-- Optional: Small panting effect lines -->
+  <g opacity="0.6">
+    <path d="M 235 265 Q 245 270 240 275" stroke="#87CEEB" stroke-width="2" fill="none"/>
+    <path d="M 240 275 Q 250 280 245 285" stroke="#87CEEB" stroke-width="1.5" fill="none"/>
+    <path d="M 165 265 Q 155 270 160 275" stroke="#87CEEB" stroke-width="2" fill="none"/>
+    <path d="M 160 275 Q 150 280 155 285" stroke="#87CEEB" stroke-width="1.5" fill="none"/>
+  </g>
+  
+  <!-- Ear highlights for 3D effect -->
+  <ellipse cx="115" cy="95" rx="8" ry="15" fill="#DEB887" opacity="0.7" transform="rotate(-25 115 95)"/>
+  <ellipse cx="285" cy="95" rx="8" ry="15" fill="#DEB887" opacity="0.7" transform="rotate(25 285 95)"/>
+</svg>
