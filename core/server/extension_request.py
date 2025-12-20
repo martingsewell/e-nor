@@ -332,6 +332,77 @@ def suggest_alternative(request: str) -> Optional[str]:
     return None
 
 
+def create_bug_report_issue(power_name: str, description: str) -> dict:
+    """Create a GitHub issue for a bug report about an extension"""
+    config = load_config()
+    owner = config.get("github", {}).get("owner")
+    repo = config.get("github", {}).get("repo")
+
+    if not owner or not repo:
+        return {"success": False, "message": "GitHub not configured"}
+
+    body = f"""## Bug Report
+
+**Extension:** {power_name}
+**Reported via:** Voice interface
+
+## Description
+{description}
+
+---
+
+## Instructions for fixing
+
+1. Find the extension in `extensions/` folder
+2. Review the manifest.json and handler.py (if exists)
+3. Fix the reported issue
+4. Test the extension works correctly
+5. Commit and push changes
+
+*This bug was reported through E-NOR's voice interface.*
+"""
+
+    try:
+        token = get_secret("GITHUB_TOKEN")
+        url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+
+        data = {
+            "title": f"[Bug] {power_name}: {description[:50]}",
+            "body": body,
+            "labels": ["enor-request", "bug", "extension"]
+        }
+
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+            "User-Agent": "E-NOR-Robot"
+        }
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(data).encode('utf-8'),
+            headers=headers,
+            method='POST'
+        )
+
+        with urllib.request.urlopen(req) as response:
+            issue = json.loads(response.read().decode('utf-8'))
+
+        return {
+            "success": True,
+            "issue_number": issue["number"],
+            "url": issue["html_url"],
+            "message": f"Bug report created as issue #{issue['number']}"
+        }
+
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        return {"success": False, "message": f"GitHub API error: {e.code}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
 # Pydantic models
 class ExtensionRequestInput(BaseModel):
     title: str

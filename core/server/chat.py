@@ -223,10 +223,21 @@ Available actions you can include in the "actions" array:
 10. Undo/fix a broken power (rollback to previous version):
     {{"type": "undo_power", "power_name": "Cat Mode"}}
 
+11. Switch to/activate a mode (use a mode power like cat mode, dog mode):
+    {{"type": "activate_mode", "mode_name": "Dog Mode", "active": true}}
+    Note: This is DIFFERENT from toggle_power!
+    - toggle_power = enable/disable the extension entirely (like uninstalling)
+    - activate_mode = start/stop USING the mode (the extension stays enabled)
+
+12. Report a bug with an extension:
+    {{"type": "report_bug", "power_name": "Dog Mode", "description": "The bark sound doesn't work"}}
+
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
 - Call rollback "undo", "go back", "fix it", or "make it like before"
 - Call enable/disable "turn on/off", "wake up/put to sleep"
+- "Switch to X mode" or "Be a X" = activate_mode (start using the mode)
+- "Disable X" or "Remove X" = toggle_power with enabled=false (disable entirely)
 - When something breaks, say "oops" or "that didn't work right"
 
 Example responses:
@@ -292,6 +303,27 @@ User: "What did you change recently?" / "What's new?"
   "message": "Let me check what powers were updated recently!",
   "emotion": "thinking",
   "actions": [{{"type": "list_powers"}}]
+}}
+
+User: "Be a dog" / "Switch to dog mode" / "Act like a dog"
+{{
+  "message": "Woof woof! I'm in dog mode now!",
+  "emotion": "happy",
+  "actions": [{{"type": "activate_mode", "mode_name": "Dog Mode", "active": true}}]
+}}
+
+User: "Stop being a dog" / "Go back to normal"
+{{
+  "message": "Okay, I'm back to being regular me!",
+  "emotion": "happy",
+  "actions": [{{"type": "activate_mode", "mode_name": "Dog Mode", "active": false}}]
+}}
+
+User: "Dog mode isn't working right" / "There's a bug in cat mode"
+{{
+  "message": "Oh no! I'll report that bug so it can be fixed.",
+  "emotion": "sad",
+  "actions": [{{"type": "report_bug", "power_name": "Dog Mode", "description": "User reported it's not working correctly"}}]
 }}
 
 Remember:
@@ -394,6 +426,8 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
         "powers_listed": None,
         "power_toggled": None,
         "power_undone": None,
+        "mode_activated": None,
+        "bug_reported": None,
         "end_conversation": False
     }
 
@@ -554,6 +588,54 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
                 }
                 print(f"Power not found for undo: {power_name}")
 
+        elif action_type == "activate_mode":
+            mode_name = action.get("mode_name", "")
+            active = action.get("active", True)
+
+            # Find extension by name (case-insensitive)
+            all_extensions = get_all_extensions()
+            found_ext = None
+            for ext in all_extensions:
+                if ext.name.lower() == mode_name.lower() or ext.id.lower() == mode_name.lower():
+                    found_ext = ext
+                    break
+
+            if found_ext:
+                # Broadcast mode activation via WebSocket
+                await broadcast_action({
+                    "type": "set_mode",
+                    "mode": found_ext.id,
+                    "mode_name": found_ext.name,
+                    "enabled": active
+                })
+                results["mode_activated"] = {
+                    "name": found_ext.name,
+                    "active": active,
+                    "success": True
+                }
+                status = "activated" if active else "deactivated"
+                print(f"Mode '{found_ext.name}' {status}")
+            else:
+                results["mode_activated"] = {
+                    "name": mode_name,
+                    "active": active,
+                    "success": False,
+                    "error": "Mode not found"
+                }
+                print(f"Mode not found: {mode_name}")
+
+        elif action_type == "report_bug":
+            power_name = action.get("power_name", "")
+            bug_description = action.get("description", "Bug reported by user")
+
+            # Create a GitHub issue for the bug report
+            bug_result = await submit_bug_report(power_name, bug_description)
+            results["bug_reported"] = bug_result
+            if bug_result.get("success"):
+                print(f"Bug reported for '{power_name}': {bug_description}")
+            else:
+                print(f"Failed to report bug: {bug_result.get('message')}")
+
     return results
 
 
@@ -568,6 +650,16 @@ async def submit_extension_request(title: str, description: str, child_request: 
         return {"success": False, "message": "GitHub token not configured"}
 
     return create_extension_issue(title, description, child_request)
+
+
+async def submit_bug_report(power_name: str, description: str) -> dict:
+    """Submit a bug report for an extension as a GitHub issue"""
+    from .extension_request import create_bug_report_issue
+
+    if not has_secret("GITHUB_TOKEN"):
+        return {"success": False, "message": "GitHub token not configured"}
+
+    return create_bug_report_issue(power_name, description)
 
 
 async def call_claude(messages: List[dict], system: str) -> str:
@@ -679,6 +771,14 @@ async def chat(message: ChatMessage) -> Dict:
         # Include power undo result
         if action_results["power_undone"]:
             result["power_undone"] = action_results["power_undone"]
+
+        # Include mode activation result
+        if action_results["mode_activated"]:
+            result["mode_activated"] = action_results["mode_activated"]
+
+        # Include bug report result
+        if action_results["bug_reported"]:
+            result["bug_reported"] = action_results["bug_reported"]
 
         return result
 
