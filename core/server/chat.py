@@ -15,6 +15,8 @@ from .secrets import get_secret, has_secret
 from .memories import get_memories_for_prompt, save_memory, update_memory, forget_memory
 from .config import load_config, get_robot_name, get_child_name, get_child_age, get_config_value
 from .extension_request import create_extension_issue, suggest_alternative, load_extension_requests
+from .plugin_loader import get_all_extensions, get_enabled_extensions, set_extension_enabled
+from .extension_versions import get_extension_versions, restore_extension, backup_extension
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -110,6 +112,33 @@ def get_pending_extension_requests_for_prompt() -> str:
     return text
 
 
+def get_installed_powers_for_prompt() -> str:
+    """Get installed extensions/powers formatted for the system prompt"""
+    all_extensions = get_all_extensions()
+
+    if not all_extensions:
+        return "\n\nYou don't have any special powers installed yet. When the child asks to create something, use extension_proposal!"
+
+    enabled = [ext for ext in all_extensions if ext.enabled]
+    disabled = [ext for ext in all_extensions if not ext.enabled]
+
+    text = "\n\nYour installed powers (extensions):\n"
+
+    if enabled:
+        text += "Active powers:\n"
+        for ext in enabled:
+            text += f"- {ext.name}: {ext.description}\n"
+
+    if disabled:
+        text += "Sleeping powers (turned off):\n"
+        for ext in disabled:
+            text += f"- {ext.name} (sleeping)\n"
+
+    text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn one off/on, use toggle_power. When something is broken, use undo_power."
+
+    return text
+
+
 def build_system_prompt() -> str:
     """Build the system prompt dynamically from config"""
     config = load_config()
@@ -185,6 +214,21 @@ Available actions you can include in the "actions" array:
 7. Tell a joke (when user asks for jokes):
    {{"type": "tell_joke", "joke_type": "dad"}}  // joke_type can be "dad", "robot", "riddles", or omit for random
 
+8. List your powers/abilities (what extensions/features you have):
+   {{"type": "list_powers"}}
+
+9. Turn a power on or off:
+   {{"type": "toggle_power", "power_name": "Cat Mode", "enabled": false}}
+
+10. Undo/fix a broken power (rollback to previous version):
+    {{"type": "undo_power", "power_name": "Cat Mode"}}
+
+Kid-friendly language:
+- Call extensions "powers", "abilities", "tricks", or "things I can do"
+- Call rollback "undo", "go back", "fix it", or "make it like before"
+- Call enable/disable "turn on/off", "wake up/put to sleep"
+- When something breaks, say "oops" or "that didn't work right"
+
 Example responses:
 
 User: "My favorite color is blue"
@@ -222,6 +266,34 @@ User: "Tell me a joke"
   "actions": [{{"type": "tell_joke"}}]
 }}
 
+User: "What powers do you have?" / "What can you do?" / "What tricks do you know?"
+{{
+  "message": "Let me check what powers I have!",
+  "emotion": "thinking",
+  "actions": [{{"type": "list_powers"}}]
+}}
+
+User: "Turn off cat mode" / "Put the cat thing to sleep"
+{{
+  "message": "Okay, I'll put Cat Mode to sleep for now!",
+  "emotion": "happy",
+  "actions": [{{"type": "toggle_power", "power_name": "Cat Mode", "enabled": false}}]
+}}
+
+User: "The quiz is broken, fix it" / "Undo that last change" / "Go back to before"
+{{
+  "message": "No worries! I'll undo that and go back to how it was before.",
+  "emotion": "happy",
+  "actions": [{{"type": "undo_power", "power_name": "Times Tables Quiz"}}]
+}}
+
+User: "What did you change recently?" / "What's new?"
+{{
+  "message": "Let me check what powers were updated recently!",
+  "emotion": "thinking",
+  "actions": [{{"type": "list_powers"}}]
+}}
+
 Remember:
 - ONLY output valid JSON, nothing else
 - Keep messages SHORT for voice (1-2 sentences)
@@ -250,7 +322,10 @@ CURRENT DATE AND TIME: {current_datetime}
     # Add pending extension requests
     pending_requests = get_pending_extension_requests_for_prompt()
 
-    return system_prompt + datetime_context + memories + pending_requests
+    # Add installed powers/extensions
+    installed_powers = get_installed_powers_for_prompt()
+
+    return system_prompt + datetime_context + memories + pending_requests + installed_powers
 
 
 class ChatMessage(BaseModel):
@@ -316,6 +391,9 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
         "extension_requests": [],
         "extension_proposals": [],
         "jokes_told": [],
+        "powers_listed": None,
+        "power_toggled": None,
+        "power_undone": None,
         "end_conversation": False
     }
 
@@ -387,6 +465,94 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
                     print(f"Duplicate extension request: {extension_result.get('message')}")
                 else:
                     print(f"Failed to create extension: {extension_result.get('message', 'unknown error')}")
+
+        elif action_type == "list_powers":
+            # List all extensions (powers) for the child
+            all_extensions = get_all_extensions()
+            powers = []
+            for ext in all_extensions:
+                powers.append({
+                    "name": ext.name,
+                    "description": ext.description,
+                    "enabled": ext.enabled,
+                    "type": ext.extension_type,
+                    "version": ext.version
+                })
+            results["powers_listed"] = {
+                "powers": powers,
+                "total": len(powers),
+                "active": len([p for p in powers if p["enabled"]])
+            }
+            print(f"Listed {len(powers)} powers")
+
+        elif action_type == "toggle_power":
+            power_name = action.get("power_name", "")
+            enabled = action.get("enabled", True)
+
+            # Find extension by name (case-insensitive)
+            all_extensions = get_all_extensions()
+            found_ext = None
+            for ext in all_extensions:
+                if ext.name.lower() == power_name.lower() or ext.id.lower() == power_name.lower():
+                    found_ext = ext
+                    break
+
+            if found_ext:
+                success = set_extension_enabled(found_ext.id, enabled)
+                results["power_toggled"] = {
+                    "name": found_ext.name,
+                    "enabled": enabled,
+                    "success": success
+                }
+                status = "awake" if enabled else "asleep"
+                print(f"Power '{found_ext.name}' is now {status}")
+            else:
+                results["power_toggled"] = {
+                    "name": power_name,
+                    "enabled": enabled,
+                    "success": False,
+                    "error": "Power not found"
+                }
+                print(f"Power not found: {power_name}")
+
+        elif action_type == "undo_power":
+            power_name = action.get("power_name", "")
+
+            # Find extension by name (case-insensitive)
+            all_extensions = get_all_extensions()
+            found_ext = None
+            for ext in all_extensions:
+                if ext.name.lower() == power_name.lower() or ext.id.lower() == power_name.lower():
+                    found_ext = ext
+                    break
+
+            if found_ext:
+                # Get versions for this extension
+                versions = get_extension_versions(found_ext.id)
+                if versions and len(versions) > 0:
+                    # Rollback to most recent previous version
+                    latest_version = versions[-1]
+                    success = restore_extension(found_ext.id, latest_version["version_id"])
+                    results["power_undone"] = {
+                        "name": found_ext.name,
+                        "version_restored": latest_version["description"],
+                        "success": success
+                    }
+                    print(f"Undid power '{found_ext.name}' - restored to: {latest_version['description']}")
+                else:
+                    results["power_undone"] = {
+                        "name": found_ext.name,
+                        "success": False,
+                        "error": "No previous version to restore"
+                    }
+                    print(f"No previous version for: {found_ext.name}")
+            else:
+                results["power_undone"] = {
+                    "name": power_name,
+                    "success": False,
+                    "error": "Power not found"
+                }
+                print(f"Power not found for undo: {power_name}")
 
     return results
 
@@ -501,6 +667,18 @@ async def chat(message: ChatMessage) -> Dict:
         # Include joke info if present
         if action_results["jokes_told"]:
             result["joke"] = action_results["jokes_told"][0]
+
+        # Include powers list if requested
+        if action_results["powers_listed"]:
+            result["powers"] = action_results["powers_listed"]
+
+        # Include power toggle result
+        if action_results["power_toggled"]:
+            result["power_toggled"] = action_results["power_toggled"]
+
+        # Include power undo result
+        if action_results["power_undone"]:
+            result["power_undone"] = action_results["power_undone"]
 
         return result
 
