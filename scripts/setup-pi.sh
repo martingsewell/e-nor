@@ -55,7 +55,7 @@ Type=simple
 User=ronniesewell
 WorkingDirectory=$INSTALL_DIR
 Environment=PATH=$VENV_DIR/bin:/usr/bin:/bin
-ExecStart=$VENV_DIR/bin/python -m uvicorn server.main:app --host 0.0.0.0 --port 8080
+ExecStart=$VENV_DIR/bin/python -m uvicorn core.server.main:app --host 0.0.0.0 --port 8080
 Restart=always
 RestartSec=5
 
