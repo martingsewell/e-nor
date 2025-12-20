@@ -39,6 +39,16 @@ chmod +x scripts/*.sh
 mkdir -p "$INSTALL_DIR/logs"
 
 echo ""
+echo "📝 Setting up config files..."
+# Copy template to settings.json if it doesn't exist
+if [ ! -f "$INSTALL_DIR/config/settings.json" ]; then
+    cp "$INSTALL_DIR/config/settings.template.json" "$INSTALL_DIR/config/settings.json"
+    echo "   Created config/settings.json from template"
+else
+    echo "   config/settings.json already exists, preserving existing settings"
+fi
+
+echo ""
 echo "⏰ Setting up auto-pull cron job..."
 CRON_JOB="* * * * * $INSTALL_DIR/scripts/auto-pull.sh"
 (crontab -l 2>/dev/null | grep -v "auto-pull.sh"; echo "$CRON_JOB") | crontab -

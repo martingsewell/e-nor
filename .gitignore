@@ -6,3 +6,7 @@ logs/
 *.log
 .DS_Store
 secrets.json
+
+# Runtime config files (modified by dashboard)
+config/settings.json
+config/memories.json

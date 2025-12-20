@@ -4,40 +4,17 @@
     "display_name": "E-NOR"
   },
   "child": {
-    "name": "Ronnie",
-    "birthdate": "2015-03-15",
-    "pronouns": "he/him"
+    "name": "",
+    "birthdate": "",
+    "pronouns": "they/them"
   },
   "wake_words": {
     "primary": "hey enor",
     "variants": [
       "hey e-nor",
-      "hey e nor",
       "hey enor",
       "enor",
-      "e-nor",
-      "e nor",
-      "hey nor",
-      "ey nor",
-      "ay nor",
-      "a nor",
-      "henor",
-      "hey en or",
-      "hey in or",
-      "hey eenor",
-      "hey eenore",
-      "he nor",
-      "he enor",
-      "heanor",
-      "hey anna",
-      "hey en",
-      "hey eno",
-      "hey eeno",
-      "heynor",
-      "hey nora",
-      "hey nor",
-      "hey ignore",
-      "hey and or"
+      "e-nor"
     ]
   },
   "personality": {
@@ -62,8 +39,8 @@
     "max_response_tokens": 300
   },
   "github": {
-    "owner": "martingsewell",
-    "repo": "e-nor"
+    "owner": "",
+    "repo": ""
   },
   "voice": {
     "gender": "female",
