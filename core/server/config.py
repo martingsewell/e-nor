@@ -162,16 +162,59 @@ def get_child_name() -> str:
     return get_config_value("child.name", "")
 
 
+def _get_phonetic_variants(word: str) -> List[str]:
+    """Generate common phonetic misrecognitions for a wake word.
+
+    Speech recognition often mishears certain sounds. This helps catch
+    common misrecognitions like 'hey enor' -> 'hey you know'.
+    """
+    variants = []
+    word_lower = word.lower()
+
+    # Common "enor/e-nor" misrecognitions
+    enor_variants = [
+        ("enor", "you know"),
+        ("enor", "you nor"),
+        ("enor", "eno"),
+        ("enor", "you no"),
+        ("enor", "inor"),
+        ("e-nor", "you know"),
+        ("e-nor", "you nor"),
+        ("e-nor", "eno"),
+    ]
+
+    for original, replacement in enor_variants:
+        if original in word_lower:
+            variants.append(word_lower.replace(original, replacement))
+
+    # "hey" can be heard as "hey" "he" "hay" "a"
+    if word_lower.startswith("hey "):
+        rest = word_lower[4:]
+        variants.extend([
+            f"he {rest}",
+            f"hay {rest}",
+            f"a {rest}",
+        ])
+
+    return variants
+
+
 def get_wake_words() -> List[str]:
-    """Get all wake words (primary + variants)"""
+    """Get all wake words (primary + variants) including phonetic variants"""
     config = load_config()
     wake_config = config.get("wake_words", {})
     primary = wake_config.get("primary", "hey enor")
     variants = wake_config.get("variants", [])
 
-    # Combine and deduplicate
+    # Combine configured words
     all_words = [primary] + variants
-    return list(dict.fromkeys(all_words))  # Preserves order, removes duplicates
+
+    # Add phonetic variants for each configured word
+    for word in [primary] + variants:
+        all_words.extend(_get_phonetic_variants(word))
+
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(all_words))
 
 
 def add_wake_word_variant(variant: str) -> bool:
