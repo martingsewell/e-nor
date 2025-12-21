@@ -430,6 +430,163 @@
       color: #666;
       margin-top: 5px;
     }
+
+    /* Motor Control Styles */
+    .motor-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    .motor-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .motor-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 12px;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      background: rgba(0, 255, 255, 0.1);
+      color: #00ffff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .motor-btn:hover {
+      background: rgba(0, 255, 255, 0.2);
+      border-color: #00ffff;
+    }
+
+    .motor-btn:active,
+    .motor-btn.active {
+      background: rgba(0, 255, 255, 0.4);
+      border-color: #00ffff;
+      transform: scale(0.95);
+    }
+
+    .motor-btn.stop-btn {
+      background: rgba(255, 68, 68, 0.2);
+      border-color: rgba(255, 68, 68, 0.5);
+      color: #ff6666;
+    }
+
+    .motor-btn.stop-btn:hover {
+      background: rgba(255, 68, 68, 0.3);
+      border-color: #ff6666;
+    }
+
+    .motor-btn.stop-btn:active,
+    .motor-btn.stop-btn.active {
+      background: rgba(255, 68, 68, 0.5);
+    }
+
+    .motor-btn-placeholder {
+      width: 70px;
+      height: 70px;
+      visibility: hidden;
+    }
+
+    .motor-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .motor-status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .motor-status-indicator.connected {
+      background: #00ff00;
+    }
+
+    .motor-status-indicator.simulated {
+      background: #ffa500;
+    }
+
+    .motor-status-indicator.error {
+      background: #ff4444;
+    }
+
+    .motor-status-text {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .motor-speed-control {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .motor-speed-control label {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .speed-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #00ffff;
+      cursor: pointer;
+    }
+
+    .speed-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #00ffff;
+      cursor: pointer;
+      border: none;
+    }
+
+    .speed-value {
+      min-width: 45px;
+      text-align: right;
+      color: #00ffff;
+      font-weight: bold;
+    }
+
+    .motor-last-command {
+      font-size: 0.8rem;
+      color: #666;
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -580,6 +737,38 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+    </div>
+
+    <!-- Motor Control -->
+    <div class="section" id="motor-section">
+      <h2 class="section-title">Motor Control</h2>
+      <div class="motor-status">
+        <div class="motor-status-indicator" id="motor-status-indicator"></div>
+        <span class="motor-status-text" id="motor-status-text">Checking connection...</span>
+      </div>
+      <div class="motor-controls">
+        <div class="motor-row">
+          <div class="motor-btn-placeholder"></div>
+          <button class="motor-btn" id="btn-forward" data-command="forward">&#9650;</button>
+          <div class="motor-btn-placeholder"></div>
+        </div>
+        <div class="motor-row">
+          <button class="motor-btn" id="btn-left" data-command="left">&#9664;</button>
+          <button class="motor-btn stop-btn" id="btn-stop" data-command="stop">&#9632;</button>
+          <button class="motor-btn" id="btn-right" data-command="right">&#9654;</button>
+        </div>
+        <div class="motor-row">
+          <div class="motor-btn-placeholder"></div>
+          <button class="motor-btn" id="btn-backward" data-command="backward">&#9660;</button>
+          <div class="motor-btn-placeholder"></div>
+        </div>
+      </div>
+      <div class="motor-speed-control">
+        <label>Speed</label>
+        <input type="range" class="speed-slider" id="motor-speed" min="0" max="100" value="70">
+        <span class="speed-value" id="speed-value">70%</span>
+      </div>
+      <div class="motor-last-command" id="motor-last-command">Last command: none</div>
     </div>
 
     <!-- Voice Settings -->
@@ -1138,8 +1327,155 @@
       `).join('');
     }
 
+    // Motor Control
+    let motorStatus = { available: false, gpio_available: false, speed: 0.7, last_command: 'stop' };
+
+    async function loadMotorStatus() {
+      try {
+        const response = await fetch('/api/motor/status');
+        if (response.ok) {
+          motorStatus = await response.json();
+          updateMotorStatusDisplay();
+        } else {
+          setMotorStatusError('API not available');
+        }
+      } catch (e) {
+        setMotorStatusError('Connection failed');
+      }
+    }
+
+    function updateMotorStatusDisplay() {
+      const indicator = document.getElementById('motor-status-indicator');
+      const text = document.getElementById('motor-status-text');
+      const lastCmd = document.getElementById('motor-last-command');
+
+      if (motorStatus.available) {
+        indicator.className = 'motor-status-indicator connected';
+        text.textContent = 'Motors connected';
+      } else if (motorStatus.gpio_available) {
+        indicator.className = 'motor-status-indicator simulated';
+        text.textContent = 'GPIO available (motors not initialized)';
+      } else {
+        indicator.className = 'motor-status-indicator simulated';
+        text.textContent = 'Simulation mode (no GPIO)';
+      }
+
+      // Update speed slider
+      const speedPercent = Math.round(motorStatus.speed * 100);
+      document.getElementById('motor-speed').value = speedPercent;
+      document.getElementById('speed-value').textContent = speedPercent + '%';
+
+      // Update last command
+      lastCmd.textContent = `Last command: ${motorStatus.last_command || 'none'}`;
+    }
+
+    function setMotorStatusError(message) {
+      const indicator = document.getElementById('motor-status-indicator');
+      const text = document.getElementById('motor-status-text');
+      indicator.className = 'motor-status-indicator error';
+      text.textContent = message;
+    }
+
+    async function sendMotorCommand(command) {
+      try {
+        const speed = parseInt(document.getElementById('motor-speed').value) / 100;
+        const response = await fetch(`/api/motor/${command}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ speed: command !== 'stop' ? speed : null })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          motorStatus = data.status;
+          updateMotorStatusDisplay();
+        }
+      } catch (e) {
+        console.error('Motor command failed:', e);
+      }
+    }
+
+    function initMotorControls() {
+      const buttons = document.querySelectorAll('.motor-btn');
+
+      buttons.forEach(btn => {
+        const command = btn.dataset.command;
+
+        // Handle mouse events
+        btn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          btn.classList.add('active');
+          sendMotorCommand(command);
+        });
+
+        btn.addEventListener('mouseup', (e) => {
+          e.preventDefault();
+          btn.classList.remove('active');
+          if (command !== 'stop') {
+            sendMotorCommand('stop');
+          }
+        });
+
+        btn.addEventListener('mouseleave', (e) => {
+          if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            if (command !== 'stop') {
+              sendMotorCommand('stop');
+            }
+          }
+        });
+
+        // Handle touch events
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          btn.classList.add('active');
+          sendMotorCommand(command);
+        });
+
+        btn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          btn.classList.remove('active');
+          if (command !== 'stop') {
+            sendMotorCommand('stop');
+          }
+        });
+
+        btn.addEventListener('touchcancel', (e) => {
+          btn.classList.remove('active');
+          if (command !== 'stop') {
+            sendMotorCommand('stop');
+          }
+        });
+      });
+
+      // Speed slider
+      const speedSlider = document.getElementById('motor-speed');
+      const speedValue = document.getElementById('speed-value');
+
+      speedSlider.addEventListener('input', () => {
+        speedValue.textContent = speedSlider.value + '%';
+      });
+
+      speedSlider.addEventListener('change', async () => {
+        const speed = parseInt(speedSlider.value) / 100;
+        try {
+          await fetch('/api/motor/speed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ speed })
+          });
+        } catch (e) {
+          console.error('Failed to set speed:', e);
+        }
+      });
+
+      // Initial status load
+      loadMotorStatus();
+    }
+
     // Initialize
     loadAll();
+    initMotorControls();
   </script>
 </body>
 </html>

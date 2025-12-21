@@ -21,6 +21,7 @@ from .config import router as config_router
 from .plugin_loader import router as extensions_router, init_extensions, get_all_extensions
 from .extension_request import router as extension_request_router
 from .extension_versions import router as extension_versions_router
+from .motor_control import router as motor_router
 
 app = FastAPI(title="E-NOR", version="1.0.0")
 
@@ -44,6 +45,7 @@ app.include_router(config_router)
 app.include_router(extensions_router)
 app.include_router(extension_request_router)
 app.include_router(extension_versions_router)
+app.include_router(motor_router)
 
 connected_clients: List[WebSocket] = []
 
@@ -66,6 +68,16 @@ async def startup_event():
     print("E-NOR server starting up...")
     init_extensions()
     print(f"Loaded {len(get_all_extensions())} extensions")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources on shutdown"""
+    print("E-NOR server shutting down...")
+    # Clean up motor GPIO
+    from hardware.motors import cleanup as motor_cleanup
+    motor_cleanup()
+    print("Cleanup complete")
 
 
 @app.get("/")
