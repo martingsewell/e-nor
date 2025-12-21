@@ -1,0 +1,41 @@
+{
+  "id": "snake_game",
+  "name": "Snake Game",
+  "description": "A fun Snake game that pops up when you ask to play snake",
+  "version": "1.0.0",
+  "author": "Ronnie",
+  "type": "game",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "play snake",
+        "snake game",
+        "start snake",
+        "let's play snake",
+        "open snake game",
+        "snake please"
+      ],
+      "action": "start_snake_game",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "close snake",
+        "stop snake",
+        "exit snake game",
+        "quit snake",
+        "snake stop"
+      ],
+      "action": "stop_snake_game", 
+      "handler": "handle_action"
+    }
+  ],
+  "ui_components": [
+    {
+      "id": "snake_game_panel",
+      "type": "game",
+      "file": "ui.html"
+    }
+  ]
+}
