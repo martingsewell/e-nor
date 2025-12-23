@@ -939,6 +939,21 @@
       <button class="btn-secondary btn-small" onclick="testVoice()">Test Voice</button>
     </div>
 
+    <!-- Display Settings -->
+    <div class="section">
+      <h2 class="section-title">Display Settings</h2>
+      <div class="form-group">
+        <label>Mode Overlay Position</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 0.8rem;">Higher</span>
+          <input type="range" class="speed-slider" id="overlay-position" min="20" max="60" value="40" onchange="saveOverlayPosition()">
+          <span style="font-size: 0.8rem;">Lower</span>
+          <span class="speed-value" id="overlay-position-value">40%</span>
+        </div>
+        <p class="hint">Adjust where cat ears, dragon horns, etc. appear on the face</p>
+      </div>
+    </div>
+
     <!-- Extensions -->
     <div class="section">
       <h2 class="section-title">Extensions</h2>
@@ -1085,6 +1100,11 @@
       document.getElementById('voice-gender').value = config.voice?.gender || 'female';
       document.getElementById('voice-rate').value = config.voice?.rate || '1.0';
       document.getElementById('voice-pitch').value = config.voice?.pitch || '1.0';
+
+      // Display settings
+      const overlayPos = config.display?.overlay_position || 40;
+      document.getElementById('overlay-position').value = overlayPos;
+      document.getElementById('overlay-position-value').textContent = overlayPos + '%';
 
       // Age display
       if (config._computed?.child_age) {
@@ -1267,6 +1287,26 @@
         });
         if (response.ok) {
           showToast('Voice settings saved!');
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    // Save overlay position
+    async function saveOverlayPosition() {
+      const value = document.getElementById('overlay-position').value;
+      document.getElementById('overlay-position-value').textContent = value + '%';
+      try {
+        const response = await fetch('/api/config/display', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            overlay_position: parseInt(value)
+          })
+        });
+        if (response.ok) {
+          showToast('Overlay position saved!');
         }
       } catch (e) {
         showToast('Failed to save', 'error');

@@ -1900,6 +1900,14 @@
       if (nameEl && robotConfig.robot?.display_name) {
         nameEl.textContent = robotConfig.robot.display_name;
       }
+
+      // Apply overlay position from config
+      const overlayPos = robotConfig.display?.overlay_position || 40;
+      const overlayContainer = document.getElementById('face-overlay-container');
+      if (overlayContainer) {
+        overlayContainer.style.top = overlayPos + '%';
+        console.log('Overlay position set to:', overlayPos + '%');
+      }
     }
 
     // Get all wake words from config

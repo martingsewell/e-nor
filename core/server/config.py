@@ -283,6 +283,10 @@ class VoiceConfig(BaseModel):
     pitch: str = "1.0"
 
 
+class DisplayConfig(BaseModel):
+    overlay_position: int = 40
+
+
 # API Endpoints
 
 @router.get("")
@@ -477,3 +481,19 @@ async def update_voice_config(voice: VoiceConfig) -> Dict:
 
     success = save_config(config)
     return {"success": success, "voice": config["voice"]}
+
+
+@router.put("/display")
+async def update_display_config(display: DisplayConfig) -> Dict:
+    """Update display configuration"""
+    config = load_config()
+
+    # Validate overlay position (20-60%)
+    overlay_pos = max(20, min(60, display.overlay_position))
+
+    config["display"] = {
+        "overlay_position": overlay_pos
+    }
+
+    success = save_config(config)
+    return {"success": success, "display": config["display"]}
