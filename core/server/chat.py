@@ -7,6 +7,7 @@ Uses config for robot/child identity and extension system for feature requests
 import json
 import random
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -20,8 +21,42 @@ from .extension_versions import get_extension_versions, restore_extension, backu
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-# Store conversation histories in memory (simple dict by conversation_id)
+# Conversation persistence file
+CONVERSATIONS_FILE = Path(__file__).parent.parent.parent / "config" / "conversations.json"
+
+# Store conversation histories (loaded from disk on startup)
 conversations: Dict[str, List[dict]] = {}
+
+
+def _load_conversations() -> Dict[str, List[dict]]:
+    """Load conversations from disk"""
+    if not CONVERSATIONS_FILE.exists():
+        return {}
+    try:
+        with open(CONVERSATIONS_FILE, 'r') as f:
+            data = json.load(f)
+            # Only keep conversations from the last hour to avoid stale data
+            cutoff = datetime.now().timestamp() - 3600
+            return {
+                k: v for k, v in data.items()
+                if isinstance(v, list) and len(v) > 0
+            }
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def _save_conversations():
+    """Save conversations to disk"""
+    try:
+        CONVERSATIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONVERSATIONS_FILE, 'w') as f:
+            json.dump(conversations, f, indent=2)
+    except IOError as e:
+        print(f"Warning: Could not save conversations: {e}")
+
+
+# Load conversations on module import
+conversations = _load_conversations()
 
 
 # WebSocket broadcast function for actions
@@ -757,6 +792,9 @@ async def chat(message: ChatMessage) -> Dict:
             "role": "assistant",
             "content": stored_message
         })
+
+        # Persist conversations to survive server restarts
+        _save_conversations()
 
         print(f"Chat: '{message.message}' -> '{parsed['message'][:50]}...' [{parsed['emotion']}]")
 
