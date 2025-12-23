@@ -162,7 +162,24 @@ def get_installed_powers_for_prompt() -> str:
     if enabled:
         text += "Active powers:\n"
         for ext in enabled:
-            text += f"- {ext.name}: {ext.description}\n"
+            # Get custom emotions for this extension
+            emotion_names = []
+            for emotion in ext.emotions:
+                # Handle cat-mode style
+                if "emotions" in emotion and isinstance(emotion["emotions"], dict):
+                    emotion_names.extend([k for k in emotion["emotions"].keys() if k not in ["meta", "_extension_id"]])
+                else:
+                    # Handle dragon-mode style
+                    for key, value in emotion.items():
+                        if key.startswith("_") or key in ["meta", "id", "version"]:
+                            continue
+                        if isinstance(value, dict) and (value.get("name") or value.get("eyes") or value.get("colors")):
+                            emotion_names.append(key)
+
+            if emotion_names and ext.extension_type == "mode":
+                text += f"- {ext.name}: {ext.description} (custom emotions: {', '.join(emotion_names)})\n"
+            else:
+                text += f"- {ext.name}: {ext.description}\n"
 
     if disabled:
         text += "Sleeping powers (turned off):\n"
@@ -170,6 +187,7 @@ def get_installed_powers_for_prompt() -> str:
             text += f"- {ext.name} (sleeping)\n"
 
     text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn a mode on/off, use activate_mode. When something is broken, use undo_power."
+    text += "\nWhen a mode is active, use its custom emotions for more personality! For example, in Dragon Mode use 'fierce' emotion."
 
     return text
 
@@ -196,10 +214,32 @@ def build_system_prompt() -> str:
 
     # Get custom emotions from extensions
     from .plugin_loader import get_all_custom_emotions
-    custom_emotions = get_all_custom_emotions()
-    custom_emotion_names = [e.get("name", e.get("id", "")) for e in custom_emotions if e.get("name") or e.get("id")]
+    custom_emotions_data = get_all_custom_emotions()
 
-    base_emotions = ["happy", "sad", "surprised", "thinking", "sleepy", "glitchy", "sparkling", "laser-focused", "processing", "overclocked"]
+    # Extract emotion IDs from different formats
+    custom_emotion_names = []
+    mode_emotions = {}  # Map mode -> list of emotions
+
+    for emotion_data in custom_emotions_data:
+        ext_id = emotion_data.get("_extension_id", "unknown")
+        mode_emotions[ext_id] = []
+
+        # Handle cat-mode style: { "emotions": { "content": {...} } }
+        if "emotions" in emotion_data and isinstance(emotion_data["emotions"], dict):
+            for emotion_id, emotion_def in emotion_data["emotions"].items():
+                if emotion_id not in ["meta", "_extension_id"]:
+                    custom_emotion_names.append(emotion_id)
+                    mode_emotions[ext_id].append(emotion_id)
+        else:
+            # Handle dragon-mode style: { "fierce": {...}, "flying": {...} }
+            for key, value in emotion_data.items():
+                if key.startswith("_") or key in ["meta", "id", "version"]:
+                    continue
+                if isinstance(value, dict) and (value.get("name") or value.get("eyes") or value.get("colors")):
+                    custom_emotion_names.append(key)
+                    mode_emotions[ext_id].append(key)
+
+    base_emotions = ["happy", "sad", "surprised", "thinking", "sleepy", "glitchy", "sparkling", "laser-focused", "processing", "overclocked", "excited", "cool", "energetic", "mysterious", "mischievous"]
     all_emotions = base_emotions + custom_emotion_names
 
     system_prompt = f"""You are {robot_name}, a friendly robot companion for {child_desc}. You live in their house and your face is displayed on a phone screen.
