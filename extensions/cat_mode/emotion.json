@@ -1,0 +1,74 @@
+{
+  "emotions": {
+    "content": {
+      "name": "Content Cat",
+      "description": "Relaxed and satisfied, like a cat in a sunbeam",
+      "face_expression": {
+        "eyes": "half_closed_peaceful",
+        "mouth": "small_satisfied_smile"
+      },
+      "colors": {
+        "primary": "#FF8C94",
+        "accent": "#FFD3A5"
+      },
+      "animation": "gentle_sway"
+    },
+    "sleepy": {
+      "name": "Sleepy Cat", 
+      "description": "Drowsy and ready for a cat nap",
+      "face_expression": {
+        "eyes": "sleepy_droopy",
+        "mouth": "tiny_yawn"
+      },
+      "colors": {
+        "primary": "#B8A9C9",
+        "accent": "#DDD6FE"
+      },
+      "animation": "slow_blink"
+    },
+    "relaxed": {
+      "name": "Relaxed Cat",
+      "description": "Perfectly at ease, like after a good stretch",
+      "face_expression": {
+        "eyes": "calm_content",
+        "mouth": "serene_smile"
+      },
+      "colors": {
+        "primary": "#A8E6CF",
+        "accent": "#C8E6C9"
+      },
+      "animation": "gentle_breathing"
+    },
+    "curious": {
+      "name": "Curious Cat",
+      "description": "Alert and intrigued, ears perked up",
+      "face_expression": {
+        "eyes": "wide_alert",
+        "mouth": "small_o_shape"
+      },
+      "colors": {
+        "primary": "#FFE082",
+        "accent": "#FFF59D"
+      },
+      "animation": "subtle_head_tilt"
+    },
+    "playful": {
+      "name": "Playful Cat",
+      "description": "Ready to pounce and play",
+      "face_expression": {
+        "eyes": "bright_mischievous",
+        "mouth": "playful_smirk"
+      },
+      "colors": {
+        "primary": "#81C784",
+        "accent": "#A5D6A7"
+      },
+      "animation": "light_bounce"
+    }
+  },
+  "meta": {
+    "extension_id": "cat_mode",
+    "created_for": "Enhanced cat-like emotional expressions",
+    "total_emotions": 5
+  }
+}

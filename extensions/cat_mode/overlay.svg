@@ -1,0 +1,44 @@
+<!-- Cat Mode Overlay: Pointed ears and whiskers -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" id="cat_ears_whiskers">
+  <!-- Left pointed ear -->
+  <polygon points="110,80 140,50 160,95 125,100" fill="#FF6B35" stroke="#E55A2B" stroke-width="2"/>
+  <polygon points="120,85 135,65 145,90 130,92" fill="#FFB3A7"/>
+  
+  <!-- Right pointed ear -->
+  <polygon points="240,95 260,50 290,80 275,100" fill="#FF6B35" stroke="#E55A2B" stroke-width="2"/>
+  <polygon points="255,90 265,65 280,85 270,92" fill="#FFB3A7"/>
+  
+  <!-- Left whiskers -->
+  <line x1="50" y1="200" x2="120" y2="205" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  <line x1="60" y1="210" x2="125" y2="215" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="220" x2="120" y2="225" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Right whiskers -->
+  <line x1="280" y1="205" x2="350" y2="200" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  <line x1="275" y1="215" x2="340" y2="210" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  <line x1="280" y1="225" x2="345" y2="220" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Cat nose (small pink triangle) -->
+  <polygon points="200,215 195,225 205,225" fill="#FF69B4" stroke="#FF1493" stroke-width="1"/>
+  <ellipse cx="198" cy="218" rx="1" ry="0.5" fill="#FFFFFF" opacity="0.8"/>
+  
+  <!-- Subtle mouth lines -->
+  <path d="M 200 225 Q 190 235 185 240" stroke="#333333" stroke-width="1.5" fill="none"/>
+  <path d="M 200 225 Q 210 235 215 240" stroke="#333333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Ear highlights for 3D effect -->
+  <ellipse cx="130" cy="75" rx="6" ry="12" fill="#FFCCCB" opacity="0.7" transform="rotate(-15 130 75)"/>
+  <ellipse cx="270" cy="75" rx="6" ry="12" fill="#FFCCCB" opacity="0.7" transform="rotate(15 270 75)"/>
+  
+  <!-- Inner ear shadows -->
+  <ellipse cx="125" cy="85" rx="3" ry="8" fill="#CC5500" opacity="0.4" transform="rotate(-15 125 85)"/>
+  <ellipse cx="275" cy="85" rx="3" ry="8" fill="#CC5500" opacity="0.4" transform="rotate(15 275 85)"/>
+  
+  <!-- Optional: Small sparkle near eyes for cat magic -->
+  <g opacity="0.8">
+    <circle cx="160" cy="180" r="1.5" fill="#FFD700"/>
+    <path d="M 158 180 L 162 180 M 160 178 L 160 182" stroke="#FFD700" stroke-width="0.5"/>
+    <circle cx="240" cy="175" r="1" fill="#FFD700"/>
+    <path d="M 239 175 L 241 175 M 240 174 L 240 176" stroke="#FFD700" stroke-width="0.5"/>
+  </g>
+</svg>

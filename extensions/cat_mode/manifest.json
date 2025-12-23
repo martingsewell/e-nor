@@ -1,0 +1,59 @@
+{
+  "id": "cat_mode",
+  "name": "Cat Mode",
+  "description": "A mode with cat ears, whiskers overlay, cat sounds (meows and purrs), and cat-like behaviors where I act more like a cat and less chatty",
+  "version": "1.0.0",
+  "author": "the child",
+  "type": "mode",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "cat mode",
+        "activate cat mode",
+        "turn on cat mode",
+        "become a cat",
+        "kitty mode",
+        "meow mode"
+      ],
+      "action": "activate_cat_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "deactivate cat mode",
+        "turn off cat mode",
+        "stop cat mode",
+        "normal mode",
+        "exit cat mode"
+      ],
+      "action": "deactivate_cat_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "meow",
+        "purr",
+        "make cat sounds"
+      ],
+      "action": "make_cat_sound",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "stretch like a cat",
+        "cat stretch"
+      ],
+      "action": "cat_stretch",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "nap time",
+        "cat nap"
+      ],
+      "action": "cat_nap",
+      "handler": "handle_action"
+    }
+  ]
+}
