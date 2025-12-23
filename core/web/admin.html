@@ -587,6 +587,138 @@
       text-align: center;
       margin-top: 10px;
     }
+
+    /* Deployment Status Styles */
+    .deploy-status {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .deploy-indicator {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .deploy-indicator.synced {
+      background: rgba(0, 255, 0, 0.2);
+      border: 2px solid #00ff00;
+    }
+
+    .deploy-indicator.behind {
+      background: rgba(255, 165, 0, 0.2);
+      border: 2px solid #ffa500;
+    }
+
+    .deploy-indicator.conflict {
+      background: rgba(255, 0, 0, 0.2);
+      border: 2px solid #ff4444;
+    }
+
+    .deploy-indicator.error {
+      background: rgba(128, 128, 128, 0.2);
+      border: 2px solid #888;
+    }
+
+    .deploy-info {
+      flex: 1;
+    }
+
+    .deploy-info h3 {
+      margin: 0 0 5px 0;
+      font-size: 1rem;
+      color: #fff;
+    }
+
+    .deploy-info p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .deploy-commits {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .commit-box {
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .commit-box h4 {
+      margin: 0 0 8px 0;
+      font-size: 0.85rem;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .commit-hash {
+      font-family: monospace;
+      color: #00ffff;
+      font-size: 0.9rem;
+    }
+
+    .commit-message {
+      font-size: 0.85rem;
+      color: #ccc;
+      margin-top: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .commit-meta {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .deploy-warning {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 15px;
+      background: rgba(255, 165, 0, 0.15);
+      border: 1px solid rgba(255, 165, 0, 0.3);
+      border-radius: 8px;
+      margin-bottom: 15px;
+      color: #ffa500;
+      font-size: 0.9rem;
+    }
+
+    .deploy-warning.hidden {
+      display: none;
+    }
+
+    .deploy-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-warning {
+      background: rgba(255, 165, 0, 0.2);
+      border: 1px solid #ffa500;
+      color: #ffa500;
+    }
+
+    .btn-warning:hover {
+      background: rgba(255, 165, 0, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -838,6 +970,50 @@
         </div>
         <button class="btn-primary" onclick="saveGithubConfig()">Save</button>
       </div>
+    </div>
+
+    <!-- Deployment Status -->
+    <div class="section">
+      <h2 class="section-title">Deployment Status</h2>
+
+      <div class="deploy-status" id="deploy-status">
+        <div class="deploy-indicator" id="deploy-indicator">
+          <span id="deploy-icon">?</span>
+        </div>
+        <div class="deploy-info">
+          <h3 id="deploy-status-title">Checking...</h3>
+          <p id="deploy-status-desc">Fetching deployment status</p>
+        </div>
+        <button class="btn-secondary btn-small" onclick="refreshDeployStatus()">Refresh</button>
+      </div>
+
+      <div class="deploy-warning hidden" id="deploy-warning">
+        <span>&#9888;</span>
+        <span id="deploy-warning-text"></span>
+      </div>
+
+      <div class="deploy-commits">
+        <div class="commit-box">
+          <h4>Local (Pi)</h4>
+          <div class="commit-hash" id="local-hash">---</div>
+          <div class="commit-message" id="local-message">Loading...</div>
+          <div class="commit-meta" id="local-meta"></div>
+        </div>
+        <div class="commit-box">
+          <h4>Remote (GitHub main)</h4>
+          <div class="commit-hash" id="remote-hash">---</div>
+          <div class="commit-message" id="remote-message">Loading...</div>
+          <div class="commit-meta" id="remote-meta"></div>
+        </div>
+      </div>
+
+      <div class="deploy-actions">
+        <button class="btn-primary" onclick="forcePull()" id="btn-pull">Pull Latest</button>
+        <button class="btn-warning btn-small" onclick="resetConflicts()" id="btn-reset-conflicts" style="display:none">Reset Conflicts</button>
+        <button class="btn-danger btn-small" onclick="forceReset()" id="btn-force-reset">Force Reset to Remote</button>
+      </div>
+
+      <p class="hint" style="margin-top: 10px;">Last checked: <span id="deploy-last-check">never</span></p>
     </div>
   </div>
 
@@ -1473,9 +1649,187 @@
       loadMotorStatus();
     }
 
+    // Deployment Status
+    let deployStatus = null;
+
+    async function loadDeployStatus() {
+      try {
+        const response = await fetch('/api/deployment/status');
+        if (response.ok) {
+          deployStatus = await response.json();
+          updateDeployStatusDisplay();
+        } else {
+          setDeployError('API not available');
+        }
+      } catch (e) {
+        setDeployError('Connection failed');
+      }
+    }
+
+    function updateDeployStatusDisplay() {
+      const indicator = document.getElementById('deploy-indicator');
+      const icon = document.getElementById('deploy-icon');
+      const title = document.getElementById('deploy-status-title');
+      const desc = document.getElementById('deploy-status-desc');
+      const warning = document.getElementById('deploy-warning');
+      const warningText = document.getElementById('deploy-warning-text');
+      const btnResetConflicts = document.getElementById('btn-reset-conflicts');
+      const btnPull = document.getElementById('btn-pull');
+
+      // Update status indicator
+      indicator.className = 'deploy-indicator ' + deployStatus.sync_status;
+
+      switch (deployStatus.sync_status) {
+        case 'synced':
+          icon.textContent = '✓';
+          title.textContent = 'Up to Date';
+          desc.textContent = 'Pi is synced with remote';
+          btnPull.textContent = 'Pull Latest';
+          btnPull.disabled = false;
+          break;
+        case 'behind':
+          icon.textContent = '↓';
+          title.textContent = `${deployStatus.commits_behind} Commit${deployStatus.commits_behind > 1 ? 's' : ''} Behind`;
+          desc.textContent = 'New updates available on remote';
+          btnPull.textContent = `Pull ${deployStatus.commits_behind} Update${deployStatus.commits_behind > 1 ? 's' : ''}`;
+          btnPull.disabled = false;
+          break;
+        case 'ahead':
+          icon.textContent = '↑';
+          title.textContent = `${deployStatus.commits_ahead} Commit${deployStatus.commits_ahead > 1 ? 's' : ''} Ahead`;
+          desc.textContent = 'Local has unpushed commits';
+          btnPull.textContent = 'Pull Latest';
+          btnPull.disabled = false;
+          break;
+        case 'conflict':
+          icon.textContent = '!';
+          title.textContent = 'Merge Conflict';
+          desc.textContent = 'Manual resolution needed';
+          btnPull.disabled = true;
+          break;
+        case 'error':
+          icon.textContent = '?';
+          title.textContent = 'Error';
+          desc.textContent = deployStatus.local?.error || deployStatus.remote?.error || 'Unknown error';
+          break;
+        default:
+          icon.textContent = '?';
+          title.textContent = 'Unknown';
+          desc.textContent = 'Could not determine status';
+      }
+
+      // Show/hide conflict button
+      btnResetConflicts.style.display = deployStatus.sync_status === 'conflict' ? 'inline-block' : 'none';
+
+      // Show warning if stale
+      if (deployStatus.is_stale && deployStatus.stale_warning) {
+        warning.classList.remove('hidden');
+        warningText.textContent = deployStatus.stale_warning;
+      } else {
+        warning.classList.add('hidden');
+      }
+
+      // Update commit info
+      if (deployStatus.local && !deployStatus.local.error) {
+        document.getElementById('local-hash').textContent = deployStatus.local.short_hash || '---';
+        document.getElementById('local-message').textContent = deployStatus.local.message || '';
+        document.getElementById('local-meta').textContent = deployStatus.local.author || '';
+      }
+
+      if (deployStatus.remote && !deployStatus.remote.error) {
+        document.getElementById('remote-hash').textContent = deployStatus.remote.short_hash || '---';
+        document.getElementById('remote-message').textContent = deployStatus.remote.message || '';
+        document.getElementById('remote-meta').textContent = deployStatus.remote.author || '';
+      }
+
+      // Update last check time
+      document.getElementById('deploy-last-check').textContent = new Date().toLocaleTimeString();
+    }
+
+    function setDeployError(message) {
+      const indicator = document.getElementById('deploy-indicator');
+      const icon = document.getElementById('deploy-icon');
+      const title = document.getElementById('deploy-status-title');
+      const desc = document.getElementById('deploy-status-desc');
+
+      indicator.className = 'deploy-indicator error';
+      icon.textContent = '!';
+      title.textContent = 'Error';
+      desc.textContent = message;
+    }
+
+    async function refreshDeployStatus() {
+      document.getElementById('deploy-status-title').textContent = 'Checking...';
+      document.getElementById('deploy-status-desc').textContent = 'Fetching from remote...';
+      await loadDeployStatus();
+    }
+
+    async function forcePull() {
+      if (!confirm('Pull latest changes from GitHub?')) return;
+
+      const btn = document.getElementById('btn-pull');
+      btn.disabled = true;
+      btn.textContent = 'Pulling...';
+
+      try {
+        const response = await fetch('/api/deployment/pull', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Pull successful! Refresh may be needed.', 'success');
+        } else {
+          showToast(result.message || 'Pull failed', 'error');
+        }
+      } catch (e) {
+        showToast('Pull failed: ' + e.message, 'error');
+      }
+
+      await loadDeployStatus();
+    }
+
+    async function resetConflicts() {
+      if (!confirm('This will discard all local changes and abort the merge. Continue?')) return;
+
+      try {
+        const response = await fetch('/api/deployment/reset-conflicts', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Conflicts reset successfully', 'success');
+        } else {
+          showToast(result.message || 'Reset failed', 'error');
+        }
+      } catch (e) {
+        showToast('Reset failed: ' + e.message, 'error');
+      }
+
+      await loadDeployStatus();
+    }
+
+    async function forceReset() {
+      if (!confirm('WARNING: This will DELETE all local changes and reset to match GitHub main. This cannot be undone. Are you sure?')) return;
+      if (!confirm('Really? All uncommitted work will be lost.')) return;
+
+      try {
+        const response = await fetch('/api/deployment/force-reset', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Force reset complete', 'success');
+        } else {
+          showToast(result.message || 'Reset failed', 'error');
+        }
+      } catch (e) {
+        showToast('Reset failed: ' + e.message, 'error');
+      }
+
+      await loadDeployStatus();
+    }
+
     // Initialize
     loadAll();
     initMotorControls();
+    loadDeployStatus();
   </script>
 </body>
 </html>

@@ -22,6 +22,7 @@ from .plugin_loader import router as extensions_router, init_extensions, get_all
 from .extension_request import router as extension_request_router
 from .extension_versions import router as extension_versions_router
 from .motor_control import router as motor_router
+from .deployment import router as deployment_router
 
 app = FastAPI(title="E-NOR", version="1.0.0")
 
@@ -46,6 +47,7 @@ app.include_router(extensions_router)
 app.include_router(extension_request_router)
 app.include_router(extension_versions_router)
 app.include_router(motor_router)
+app.include_router(deployment_router)
 
 connected_clients: List[WebSocket] = []
 
