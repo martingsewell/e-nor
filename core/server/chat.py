@@ -15,7 +15,7 @@ from .secrets import get_secret, has_secret
 from .memories import get_memories_for_prompt, save_memory, update_memory, forget_memory
 from .config import load_config, get_robot_name, get_child_name, get_child_age, get_config_value
 from .extension_request import create_extension_issue, suggest_alternative, load_extension_requests
-from .plugin_loader import get_all_extensions, get_enabled_extensions, set_extension_enabled
+from .plugin_loader import get_all_extensions, get_enabled_extensions, set_extension_enabled, execute_custom_action
 from .extension_versions import get_extension_versions, restore_extension, backup_extension
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -134,7 +134,7 @@ def get_installed_powers_for_prompt() -> str:
         for ext in disabled:
             text += f"- {ext.name} (sleeping)\n"
 
-    text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn one off/on, use toggle_power. When something is broken, use undo_power."
+    text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn a mode on/off, use activate_mode. When something is broken, use undo_power."
 
     return text
 
@@ -217,28 +217,25 @@ Available actions you can include in the "actions" array:
 8. List your powers/abilities (what extensions/features you have):
    {{"type": "list_powers"}}
 
-9. Turn a power on or off:
-   {{"type": "toggle_power", "power_name": "Cat Mode", "enabled": false}}
+9. Undo/fix a broken power (rollback to previous version):
+   {{"type": "undo_power", "power_name": "Cat Mode"}}
 
-10. Undo/fix a broken power (rollback to previous version):
-    {{"type": "undo_power", "power_name": "Cat Mode"}}
-
-11. Switch to/activate a mode (use a mode power like cat mode, dog mode):
+10. Turn on/off a mode (use a mode power like cat mode, dog mode):
     {{"type": "activate_mode", "mode_name": "Dog Mode", "active": true}}
-    Note: This is DIFFERENT from toggle_power!
-    - toggle_power = enable/disable the extension entirely (like uninstalling)
-    - activate_mode = start/stop USING the mode (the extension stays enabled)
+    Use this for ALL "turn on X mode", "turn off X mode", "activate X", "deactivate X" requests!
+    - active: true = turn on the mode / start using it
+    - active: false = turn off the mode / stop using it
 
-12. Report a bug with an extension:
+11. Report a bug with an extension:
     {{"type": "report_bug", "power_name": "Dog Mode", "description": "The bark sound doesn't work"}}
 
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
 - Call rollback "undo", "go back", "fix it", or "make it like before"
-- Call enable/disable "turn on/off", "wake up/put to sleep"
-- "Switch to X mode" or "Be a X" = activate_mode (start using the mode)
-- "Disable X" or "Remove X" = toggle_power with enabled=false (disable entirely)
+- "Turn on X mode", "Switch to X mode", "Be a X", "Activate X" = activate_mode with active: true
+- "Turn off X mode", "Stop being X", "Deactivate X", "Go back to normal" = activate_mode with active: false
 - When something breaks, say "oops" or "that didn't work right"
+- NOTE: Extension enable/disable is managed by parents in the dashboard, NOT via voice
 
 Example responses:
 
@@ -284,11 +281,18 @@ User: "What powers do you have?" / "What can you do?" / "What tricks do you know
   "actions": [{{"type": "list_powers"}}]
 }}
 
-User: "Turn off cat mode" / "Put the cat thing to sleep"
+User: "Turn on cat mode" / "Activate cat mode"
 {{
-  "message": "Okay, I'll put Cat Mode to sleep for now!",
+  "message": "Meow! I'm in cat mode now!",
   "emotion": "happy",
-  "actions": [{{"type": "toggle_power", "power_name": "Cat Mode", "enabled": false}}]
+  "actions": [{{"type": "activate_mode", "mode_name": "Cat Mode", "active": true}}]
+}}
+
+User: "Turn off cat mode" / "Stop being a cat"
+{{
+  "message": "Okay, I'm back to being regular me!",
+  "emotion": "happy",
+  "actions": [{{"type": "activate_mode", "mode_name": "Cat Mode", "active": false}}]
 }}
 
 User: "The quiz is broken, fix it" / "Undo that last change" / "Go back to before"
@@ -520,6 +524,9 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
             print(f"Listed {len(powers)} powers")
 
         elif action_type == "toggle_power":
+            # NOTE: toggle_power enables/disables extensions entirely (modifies manifest.json)
+            # This is intended for ADMIN UI only, not voice commands.
+            # For voice "turn on/off mode" requests, use activate_mode instead.
             power_name = action.get("power_name", "")
             enabled = action.get("enabled", True)
 
@@ -608,13 +615,20 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
                     "mode_name": found_ext.name,
                     "enabled": active
                 })
+
+                # Call the extension's handler if it has one
+                # Use standard action names: activate_{ext_id} or deactivate_{ext_id}
+                handler_action = f"activate_{found_ext.id}" if active else f"deactivate_{found_ext.id}"
+                handler_result = await execute_custom_action(found_ext.id, handler_action, {})
+
                 results["mode_activated"] = {
                     "name": found_ext.name,
                     "active": active,
-                    "success": True
+                    "success": True,
+                    "handler_called": handler_result.get("success", False)
                 }
                 status = "activated" if active else "deactivated"
-                print(f"Mode '{found_ext.name}' {status}")
+                print(f"Mode '{found_ext.name}' {status} (handler: {handler_result.get('success', False)})")
             else:
                 results["mode_activated"] = {
                     "name": mode_name,
