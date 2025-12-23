@@ -1,0 +1,58 @@
+{
+  "id": "dragon_mode",
+  "name": "Dragon Mode",
+  "description": "A mode with dragon wings, dragon sounds (roars and growls), fire effects, and dragon-like behaviors",
+  "version": "1.0.0",
+  "author": "the child",
+  "type": "mode",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "dragon mode",
+        "activate dragon mode",
+        "turn on dragon mode",
+        "become a dragon",
+        "dragon form",
+        "fire dragon mode"
+      ],
+      "action": "activate_dragon_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "deactivate dragon mode",
+        "turn off dragon mode",
+        "stop dragon mode",
+        "normal mode",
+        "exit dragon mode",
+        "human mode"
+      ],
+      "action": "deactivate_dragon_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "roar",
+        "growl",
+        "make dragon sounds",
+        "breathe fire",
+        "dragon roar",
+        "fierce roar"
+      ],
+      "action": "make_dragon_sound",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "fly around",
+        "spread wings",
+        "dragon flight",
+        "soar",
+        "take flight"
+      ],
+      "action": "dragon_flight",
+      "handler": "handle_action"
+    }
+  ]
+}

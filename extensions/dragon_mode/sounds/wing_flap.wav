@@ -1,0 +1,10 @@
+# Dragon Wing Flap Sound File
+# This is a placeholder for the actual wing flapping sound effect
+# In a real implementation, this would be a WAV audio file containing:
+# Large wing beating sounds - WHOOOMP-WHOOOMP-WHOOOMP
+# Duration: ~2.5 seconds (3-4 flaps)
+# Frequency: Low-mid range with air displacement whoosh
+# Volume: Powerful and rhythmic
+
+# File format: WAV (44.1kHz, 16-bit)
+# Sound description: Mighty dragon wings beating through air

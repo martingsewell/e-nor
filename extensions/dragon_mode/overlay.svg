@@ -1,0 +1,119 @@
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients for dragon features -->
+    <linearGradient id="wingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B0000;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#DC143C;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#B22222;stop-opacity:0.9" />
+    </linearGradient>
+    
+    <linearGradient id="hornGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2F4F2F;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#556B2F;stop-opacity:0.8" />
+    </linearGradient>
+    
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FF4500;stop-opacity:0.8" />
+      <stop offset="70%" style="stop-color:#FF6347;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#FF0000;stop-opacity:0.3" />
+    </radialGradient>
+
+    <!-- Fire effect filter -->
+    <filter id="fire">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/> 
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Left Dragon Wing -->
+  <path d="M 50 120 Q 20 100 10 140 Q 15 180 40 160 Q 60 140 50 120 Z" 
+        fill="url(#wingGradient)" 
+        stroke="#4A0000" 
+        stroke-width="2"
+        opacity="0.85">
+    <animateTransform attributeName="transform" 
+                      attributeType="XML" 
+                      type="rotate" 
+                      values="0 50 140; -10 50 140; 0 50 140" 
+                      dur="2s" 
+                      repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Right Dragon Wing -->
+  <path d="M 250 120 Q 280 100 290 140 Q 285 180 260 160 Q 240 140 250 120 Z" 
+        fill="url(#wingGradient)" 
+        stroke="#4A0000" 
+        stroke-width="2"
+        opacity="0.85">
+    <animateTransform attributeName="transform" 
+                      attributeType="XML" 
+                      type="rotate" 
+                      values="0 250 140; 10 250 140; 0 250 140" 
+                      dur="2s" 
+                      repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Wing membrane details -->
+  <path d="M 30 125 Q 25 135 35 145 Q 40 135 30 125" 
+        fill="#8B0000" opacity="0.6"/>
+  <path d="M 270 125 Q 275 135 265 145 Q 260 135 270 125" 
+        fill="#8B0000" opacity="0.6"/>
+  
+  <!-- Left Dragon Horn -->
+  <polygon points="130,60 135,40 140,60" 
+           fill="url(#hornGradient)" 
+           stroke="#1A1A1A" 
+           stroke-width="1"/>
+  
+  <!-- Right Dragon Horn -->
+  <polygon points="160,60 165,40 170,60" 
+           fill="url(#hornGradient)" 
+           stroke="#1A1A1A" 
+           stroke-width="1"/>
+  
+  <!-- Dragon Eye Glow Effects (Left) -->
+  <circle cx="120" cy="130" r="12" fill="url(#eyeGlow)" opacity="0.7">
+    <animate attributeName="r" values="10;14;10" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Dragon Eye Glow Effects (Right) -->
+  <circle cx="180" cy="130" r="12" fill="url(#eyeGlow)" opacity="0.7">
+    <animate attributeName="r" values="10;14;10" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Fire Breath Effect -->
+  <g opacity="0.6" filter="url(#fire)">
+    <ellipse cx="150" cy="180" rx="8" ry="15" fill="#FF4500">
+      <animate attributeName="ry" values="10;20;10" dur="1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="145" cy="190" rx="6" ry="12" fill="#FF6347">
+      <animate attributeName="ry" values="8;16;8" dur="0.8s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="155" cy="190" rx="6" ry="12" fill="#FF6347">
+      <animate attributeName="ry" values="8;16;8" dur="0.8s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+  
+  <!-- Dragon Scales/Spikes on forehead -->
+  <polygon points="150,80 145,70 155,70" fill="#556B2F" opacity="0.8"/>
+  <polygon points="140,85 137,77 143,77" fill="#556B2F" opacity="0.7"/>
+  <polygon points="160,85 157,77 163,77" fill="#556B2F" opacity="0.7"/>
+  
+  <!-- Animated smoke particles -->
+  <circle cx="130" cy="200" r="2" fill="#696969" opacity="0.4">
+    <animateTransform attributeName="transform" type="translate" 
+                      values="0,0; -10,-20; -20,-40" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;0.1;0" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="170" cy="200" r="2" fill="#696969" opacity="0.4">
+    <animateTransform attributeName="transform" type="translate" 
+                      values="0,0; 10,-20; 20,-40" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;0.1;0" dur="3s" repeatCount="indefinite"/>
+  </circle>
+</svg>
