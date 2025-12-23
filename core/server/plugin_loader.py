@@ -26,6 +26,7 @@ class Extension:
     version: str
     author: str
     extension_type: str  # e.g., "emotion", "action", "game", "feature"
+    category: str  # UI category: games, modes, tools, quizzes, custom1-4
     enabled: bool
     path: Path
     manifest: Dict
@@ -53,6 +54,19 @@ def get_extensions_dir() -> Path:
     """Get the extensions directory, creating it if needed"""
     EXTENSIONS_DIR.mkdir(parents=True, exist_ok=True)
     return EXTENSIONS_DIR
+
+
+def _infer_category_from_type(ext_type: str) -> str:
+    """Infer a default category from extension type for backwards compatibility"""
+    type_to_category = {
+        "game": "games",
+        "mode": "modes",
+        "utility": "tools",
+        "action": "tools",
+        "feature": "tools",
+        "emotion": "modes",
+    }
+    return type_to_category.get(ext_type, "tools")
 
 
 def load_manifest(extension_path: Path) -> Optional[Dict]:
@@ -180,6 +194,10 @@ def load_single_extension(extension_path: Path) -> Optional[Extension]:
 
     extension_id = manifest.get("id", extension_path.name)
 
+    # Infer category from type if not explicitly set
+    ext_type = manifest.get("type", "feature")
+    default_category = _infer_category_from_type(ext_type)
+
     # Load the extension
     extension = Extension(
         id=extension_id,
@@ -187,7 +205,8 @@ def load_single_extension(extension_path: Path) -> Optional[Extension]:
         description=manifest.get("description", ""),
         version=manifest.get("version", "1.0.0"),
         author=manifest.get("author", "unknown"),
-        extension_type=manifest.get("type", "feature"),
+        extension_type=ext_type,
+        category=manifest.get("category", default_category),
         enabled=manifest.get("enabled", True),
         path=extension_path,
         manifest=manifest
@@ -362,6 +381,20 @@ def delete_extension(extension_id: str) -> bool:
         return False
 
 
+def get_extensions_by_category(category: str) -> List[Extension]:
+    """Get all enabled extensions in a specific category"""
+    return [ext for ext in get_enabled_extensions() if ext.category == category]
+
+
+def get_category_counts() -> Dict[str, int]:
+    """Get count of enabled extensions per category"""
+    counts = {}
+    for ext in get_enabled_extensions():
+        cat = ext.category
+        counts[cat] = counts.get(cat, 0) + 1
+    return counts
+
+
 # API Endpoints
 
 @router.get("")
@@ -376,6 +409,7 @@ async def list_extensions() -> Dict:
             "version": ext.version,
             "author": ext.author,
             "type": ext.extension_type,
+            "category": ext.category,
             "enabled": ext.enabled,
             "has_emotions": len(ext.emotions) > 0,
             "has_jokes": len(ext.jokes) > 0,
@@ -388,6 +422,113 @@ async def list_extensions() -> Dict:
         "extensions": extensions,
         "total": len(extensions),
         "enabled_count": len([e for e in extensions if e["enabled"]])
+    }
+
+
+@router.get("/categories")
+async def get_categories() -> Dict:
+    """Get all UI categories with their extension counts and configuration"""
+    from .config import load_config
+
+    config = load_config()
+    ui_categories = config.get("ui_categories", {})
+    counts = get_category_counts()
+
+    # Define the 8 category slots
+    categories = [
+        # Fixed categories (4)
+        {
+            "id": "games",
+            "name": ui_categories.get("games", {}).get("name", "Games"),
+            "icon": ui_categories.get("games", {}).get("icon", "🎮"),
+            "fixed": True,
+            "count": counts.get("games", 0)
+        },
+        {
+            "id": "modes",
+            "name": ui_categories.get("modes", {}).get("name", "Modes"),
+            "icon": ui_categories.get("modes", {}).get("icon", "🎭"),
+            "fixed": True,
+            "count": counts.get("modes", 0)
+        },
+        {
+            "id": "tools",
+            "name": ui_categories.get("tools", {}).get("name", "Tools"),
+            "icon": ui_categories.get("tools", {}).get("icon", "🛠️"),
+            "fixed": True,
+            "count": counts.get("tools", 0)
+        },
+        {
+            "id": "quizzes",
+            "name": ui_categories.get("quizzes", {}).get("name", "Quizzes"),
+            "icon": ui_categories.get("quizzes", {}).get("icon", "🧠"),
+            "fixed": True,
+            "count": counts.get("quizzes", 0)
+        },
+        # Configurable categories (4)
+        {
+            "id": "custom1",
+            "name": ui_categories.get("custom1", {}).get("name", "Stories"),
+            "icon": ui_categories.get("custom1", {}).get("icon", "📖"),
+            "fixed": False,
+            "count": counts.get("custom1", 0)
+        },
+        {
+            "id": "custom2",
+            "name": ui_categories.get("custom2", {}).get("name", "Creative"),
+            "icon": ui_categories.get("custom2", {}).get("icon", "🎨"),
+            "fixed": False,
+            "count": counts.get("custom2", 0)
+        },
+        {
+            "id": "custom3",
+            "name": ui_categories.get("custom3", {}).get("name", "Learning"),
+            "icon": ui_categories.get("custom3", {}).get("icon", "📚"),
+            "fixed": False,
+            "count": counts.get("custom3", 0)
+        },
+        {
+            "id": "custom4",
+            "name": ui_categories.get("custom4", {}).get("name", "Fun"),
+            "icon": ui_categories.get("custom4", {}).get("icon", "😂"),
+            "fixed": False,
+            "count": counts.get("custom4", 0)
+        },
+    ]
+
+    return {
+        "categories": categories,
+        "total_extensions": sum(counts.values())
+    }
+
+
+@router.get("/by-category/{category}")
+async def get_extensions_in_category(category: str) -> Dict:
+    """Get all enabled extensions in a specific category"""
+    valid_categories = ["games", "modes", "tools", "quizzes", "custom1", "custom2", "custom3", "custom4"]
+    if category not in valid_categories:
+        return {"error": f"Invalid category. Must be one of: {', '.join(valid_categories)}"}
+
+    extensions = []
+    for ext in get_extensions_by_category(category):
+        ui_config = ext.manifest.get("ui", {})
+        extensions.append({
+            "id": ext.id,
+            "name": ext.name,
+            "description": ext.description,
+            "version": ext.version,
+            "type": ext.extension_type,
+            "category": ext.category,
+            "icon": ui_config.get("button_emoji", "⭐"),
+            "color": ui_config.get("button_color", "#00ffff"),
+            "has_voice_triggers": len(ext.voice_triggers) > 0,
+            "voice_triggers": [t.get("phrases", [])[0] if t.get("phrases") else "" for t in ext.voice_triggers[:3]]
+        })
+
+    return {
+        "category": category,
+        "extensions": extensions,
+        "count": len(extensions)
     }
 
 
@@ -405,6 +546,7 @@ async def get_extension_details(extension_id: str) -> Dict:
         "version": ext.version,
         "author": ext.author,
         "type": ext.extension_type,
+        "category": ext.category,
         "enabled": ext.enabled,
         "manifest": ext.manifest,
         "emotions": ext.emotions,

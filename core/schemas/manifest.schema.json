@@ -32,6 +32,12 @@
       "description": "Type of extension",
       "enum": ["feature", "game", "emotion", "mode", "action", "utility"]
     },
+    "category": {
+      "type": "string",
+      "description": "UI category for grouping extensions in the main interface. Fixed categories: games, modes, tools, quizzes. Custom categories: custom1-4 (configurable in settings)",
+      "enum": ["games", "modes", "tools", "quizzes", "custom1", "custom2", "custom3", "custom4"],
+      "default": "tools"
+    },
     "enabled": {
       "type": "boolean",
       "description": "Whether the extension is enabled",

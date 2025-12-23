@@ -210,6 +210,7 @@ extensions/{_sanitize_extension_name(title)}/
   "version": "1.0.0",
   "author": "{child_name}",
   "type": "feature",
+  "category": "tools",
   "enabled": true,
   "voice_triggers": [
     {{
@@ -219,6 +220,26 @@ extensions/{_sanitize_extension_name(title)}/
   ]
 }}
 ```
+
+### Category Field (IMPORTANT)
+
+The `category` field determines where the extension appears in the UI button bar. Choose the appropriate category:
+
+| Category | Use for | Icon |
+|----------|---------|------|
+| `games` | Games, interactive activities | 🎮 |
+| `modes` | Personality modes, character transformations | 🎭 |
+| `tools` | Utilities, helpers | 🛠️ |
+| `quizzes` | Educational quizzes, trivia | 🧠 |
+| `custom1` | Stories | 📖 |
+| `custom2` | Creative/art | 🎨 |
+| `custom3` | Learning/educational | 📚 |
+| `custom4` | Fun/jokes | 😂 |
+
+**Default mapping from type:**
+- `type: "game"` → `category: "games"`
+- `type: "mode"` → `category: "modes"`
+- Other types → `category: "tools"`
 
 ### Extension API Reference
 

@@ -34,6 +34,58 @@ E-NOR is a robot companion that runs on a Raspberry Pi with a phone displaying t
 
 ---
 
+## Extension Categories (UI Organization)
+
+Extensions appear in the main UI under **category buttons** at the bottom of the face screen. The `category` field in manifest.json determines which button the extension appears under.
+
+### Available Categories
+
+| Category | Icon | Purpose | Default for type |
+|----------|------|---------|------------------|
+| `games` | 🎮 | Games, interactive activities | `game` |
+| `modes` | 🎭 | Personality modes, character transformations | `mode`, `emotion` |
+| `tools` | 🛠️ | Utilities, helpers, calculators | `utility`, `action`, `feature` |
+| `quizzes` | 🧠 | Educational quizzes, trivia | - |
+| `custom1` | 📖 | Stories (configurable) | - |
+| `custom2` | 🎨 | Creative (configurable) | - |
+| `custom3` | 📚 | Learning (configurable) | - |
+| `custom4` | 😂 | Fun (configurable) | - |
+
+### Setting the Category
+
+Add the `category` field to your manifest.json:
+
+```json
+{
+  "id": "times_tables_quiz",
+  "name": "Times Tables Quiz",
+  "type": "game",
+  "category": "quizzes",  // <-- This determines UI placement
+  ...
+}
+```
+
+**Important Notes:**
+- If `category` is not specified, it's inferred from the `type` field
+- Games (`type: "game"`) default to `category: "games"`
+- Modes (`type: "mode"`) default to `category: "modes"`
+- Most other types default to `category: "tools"`
+
+### Category Guidelines
+
+| If creating... | Set category to... |
+|----------------|-------------------|
+| A game or interactive activity | `games` |
+| A personality mode with overlays | `modes` |
+| An educational quiz | `quizzes` |
+| A helper tool or utility | `tools` |
+| A story-telling extension | `custom1` (Stories) |
+| A creative/art extension | `custom2` (Creative) |
+| An educational learning tool | `custom3` (Learning) |
+| A fun/jokes extension | `custom4` (Fun) |
+
+---
+
 ## Mode Extensions (CRITICAL - Read Carefully)
 
 Mode extensions are special. They:
@@ -65,6 +117,7 @@ extensions/dragon_mode/
   "version": "1.0.0",
   "author": "the child",
   "type": "mode",
+  "category": "modes",
   "enabled": true,
   "voice_triggers": [
     {
