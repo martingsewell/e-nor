@@ -1,44 +1,48 @@
-<!-- Cat Mode Overlay: Pointed ears and whiskers -->
+<!-- Cat Mode Overlay: DRAMATIC cat transformation -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" id="cat_ears_whiskers">
-  <!-- Left pointed ear -->
-  <polygon points="110,80 140,50 160,95 125,100" fill="#FF6B35" stroke="#E55A2B" stroke-width="2"/>
-  <polygon points="120,85 135,65 145,90 130,92" fill="#FFB3A7"/>
-  
-  <!-- Right pointed ear -->
-  <polygon points="240,95 260,50 290,80 275,100" fill="#FF6B35" stroke="#E55A2B" stroke-width="2"/>
-  <polygon points="255,90 265,65 280,85 270,92" fill="#FFB3A7"/>
-  
-  <!-- Left whiskers -->
-  <line x1="50" y1="200" x2="120" y2="205" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  <line x1="60" y1="210" x2="125" y2="215" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  <line x1="55" y1="220" x2="120" y2="225" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  
-  <!-- Right whiskers -->
-  <line x1="280" y1="205" x2="350" y2="200" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  <line x1="275" y1="215" x2="340" y2="210" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  <line x1="280" y1="225" x2="345" y2="220" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-  
-  <!-- Cat nose (small pink triangle) -->
-  <polygon points="200,215 195,225 205,225" fill="#FF69B4" stroke="#FF1493" stroke-width="1"/>
-  <ellipse cx="198" cy="218" rx="1" ry="0.5" fill="#FFFFFF" opacity="0.8"/>
-  
-  <!-- Subtle mouth lines -->
-  <path d="M 200 225 Q 190 235 185 240" stroke="#333333" stroke-width="1.5" fill="none"/>
-  <path d="M 200 225 Q 210 235 215 240" stroke="#333333" stroke-width="1.5" fill="none"/>
-  
-  <!-- Ear highlights for 3D effect -->
-  <ellipse cx="130" cy="75" rx="6" ry="12" fill="#FFCCCB" opacity="0.7" transform="rotate(-15 130 75)"/>
-  <ellipse cx="270" cy="75" rx="6" ry="12" fill="#FFCCCB" opacity="0.7" transform="rotate(15 270 75)"/>
-  
-  <!-- Inner ear shadows -->
-  <ellipse cx="125" cy="85" rx="3" ry="8" fill="#CC5500" opacity="0.4" transform="rotate(-15 125 85)"/>
-  <ellipse cx="275" cy="85" rx="3" ry="8" fill="#CC5500" opacity="0.4" transform="rotate(15 275 85)"/>
-  
-  <!-- Optional: Small sparkle near eyes for cat magic -->
-  <g opacity="0.8">
-    <circle cx="160" cy="180" r="1.5" fill="#FFD700"/>
-    <path d="M 158 180 L 162 180 M 160 178 L 160 182" stroke="#FFD700" stroke-width="0.5"/>
-    <circle cx="240" cy="175" r="1" fill="#FFD700"/>
-    <path d="M 239 175 L 241 175 M 240 174 L 240 176" stroke="#FFD700" stroke-width="0.5"/>
+  <!-- Large pointed cat ears -->
+  <!-- Left ear (big and prominent) -->
+  <polygon points="70,180 110,20 170,150" fill="#FFB6C1" stroke="#FF69B4" stroke-width="4"/>
+  <polygon points="90,160 115,50 150,140" fill="#FF69B4"/>
+
+  <!-- Right ear (big and prominent) -->
+  <polygon points="230,150 290,20 330,180" fill="#FFB6C1" stroke="#FF69B4" stroke-width="4"/>
+  <polygon points="250,140 285,50 310,160" fill="#FF69B4"/>
+
+  <!-- Ear tufts -->
+  <path d="M 108 45 Q 112 30 118 45" stroke="#FF1493" stroke-width="2" fill="none"/>
+  <path d="M 282 45 Q 288 30 294 45" stroke="#FF1493" stroke-width="2" fill="none"/>
+
+  <!-- Large whiskers (3 on each side) -->
+  <g stroke="#FF69B4" stroke-width="3" stroke-linecap="round">
+    <!-- Left whiskers -->
+    <line x1="0" y1="180" x2="110" y2="200"/>
+    <line x1="10" y1="210" x2="115" y2="215"/>
+    <line x1="0" y1="240" x2="110" y2="230"/>
+
+    <!-- Right whiskers -->
+    <line x1="290" y1="200" x2="400" y2="180"/>
+    <line x1="285" y1="215" x2="390" y2="210"/>
+    <line x1="290" y1="230" x2="400" y2="240"/>
   </g>
+
+  <!-- Cat nose (pink triangle, positioned over mouth area) -->
+  <polygon points="200,220 185,250 215,250" fill="#FF69B4" stroke="#FF1493" stroke-width="2"/>
+  <ellipse cx="195" cy="230" rx="3" ry="2" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- Cat mouth lines (from nose down) -->
+  <path d="M 200 250 Q 185 275 165 280" stroke="#FF69B4" stroke-width="3" fill="none"/>
+  <path d="M 200 250 Q 215 275 235 280" stroke="#FF69B4" stroke-width="3" fill="none"/>
+
+  <!-- Whisker dots -->
+  <circle cx="170" cy="235" r="4" fill="#FF69B4"/>
+  <circle cx="160" cy="220" r="3" fill="#FF69B4"/>
+  <circle cx="165" cy="250" r="3" fill="#FF69B4"/>
+  <circle cx="230" cy="235" r="4" fill="#FF69B4"/>
+  <circle cx="240" cy="220" r="3" fill="#FF69B4"/>
+  <circle cx="235" cy="250" r="3" fill="#FF69B4"/>
+
+  <!-- Subtle face fur texture on sides -->
+  <path d="M 50 250 Q 80 240 100 260" stroke="#FFB6C1" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M 300 260 Q 320 240 350 250" stroke="#FFB6C1" stroke-width="2" fill="none" opacity="0.5"/>
 </svg>
