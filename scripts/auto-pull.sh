@@ -40,7 +40,18 @@ add_version(description, 'working')
 print(f'Version created: {description}')
 " >> "$LOG_FILE" 2>&1
 
-        sudo systemctl restart "$SERVICE_NAME" 2>/dev/null
+        # Try systemctl first, fall back to pkill/nohup if not available
+        if sudo systemctl restart "$SERVICE_NAME" 2>/dev/null; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Service restarted via systemctl" >> "$LOG_FILE"
+        else
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] systemctl failed, using pkill/nohup..." >> "$LOG_FILE"
+            pkill -f "uvicorn core.server.main:app" 2>/dev/null
+            sleep 1
+            cd "$REPO_DIR"
+            mkdir -p logs
+            nohup uvicorn core.server.main:app --host 0.0.0.0 --port 8080 > logs/enor.log 2>&1 &
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Service restarted via nohup (PID: $!)" >> "$LOG_FILE"
+        fi
     fi
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Update complete: $(git log -1 --oneline)" >> "$LOG_FILE"
