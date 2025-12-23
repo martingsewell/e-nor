@@ -1,0 +1,83 @@
+{
+  "id": "christmas_mode",
+  "name": "Christmas Mode",
+  "description": "A festive mode with a Santa hat, holiday lights, jingle bells, and Christmas cheer",
+  "version": "1.0.0",
+  "author": "Ronnie",
+  "type": "mode",
+  "category": "modes",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "christmas mode",
+        "activate christmas mode",
+        "turn on christmas mode",
+        "santa mode",
+        "christmas time",
+        "ho ho ho mode",
+        "festive mode"
+      ],
+      "action": "activate_christmas_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "deactivate christmas mode",
+        "turn off christmas mode",
+        "stop christmas mode",
+        "normal mode",
+        "exit christmas mode",
+        "regular mode"
+      ],
+      "action": "deactivate_christmas_mode",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "ho ho ho",
+        "jingle bells",
+        "merry christmas",
+        "christmas cheer",
+        "santa laugh",
+        "christmas greeting"
+      ],
+      "action": "christmas_cheer",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "christmas lights",
+        "holiday lights",
+        "twinkle lights",
+        "light up",
+        "sparkle lights",
+        "festive lights"
+      ],
+      "action": "christmas_lights",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "tell me about christmas",
+        "christmas story",
+        "christmas facts",
+        "what is christmas",
+        "christmas traditions"
+      ],
+      "action": "christmas_story",
+      "handler": "handle_action"
+    }
+  ],
+  "ui": {
+    "button_label": "Christmas",
+    "button_emoji": "🎄",
+    "button_color": "#ff0000"
+  },
+  "provides": {
+    "emotions": true,
+    "overlay": true,
+    "sounds": true,
+    "handler": true
+  }
+}
