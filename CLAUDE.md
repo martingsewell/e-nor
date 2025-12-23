@@ -24,6 +24,14 @@ journalctl -u enor -f
 tail -f /home/ronniesewell/e-nor/logs/*.log
 ```
 
+### Push logs for remote debugging:
+```bash
+cd /home/ronniesewell/e-nor
+./scripts/push-logs.sh
+```
+This pushes logs to the `logs` branch (excluded from auto-merge to main).
+Claude Code can then read logs from `https://raw.githubusercontent.com/{owner}/{repo}/logs/logs/enor_*.log`
+
 ## Architecture
 
 ### Directory Structure
