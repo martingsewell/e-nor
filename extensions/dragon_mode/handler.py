@@ -61,8 +61,18 @@ async def handle_action(action: str, params: dict = None) -> dict:
     """Handle dragon mode actions"""
     
     if action == "activate_dragon_mode":
-        # Show dragon overlay with wings and fierce eyes
-        await api.show_face_overlay("dragon_wings_eyes")
+        # Show dragon transformation action (visual feedback)
+        await api.broadcast({
+            "type": "action",
+            "action": {
+                "text": "🐲 *TRANSFORMING INTO DRAGON* 🔥",
+                "emoji": "🐲",
+                "color": "#ff4500"
+            }
+        })
+        
+        # Show dragon overlay with wings and fierce eyes (for when frontend implements it)
+        await api.show_face_overlay("dragon_mode")
         
         # Set dragon mode active
         await api.set_mode("dragon_mode", True)
@@ -78,11 +88,41 @@ async def handle_action(action: str, params: dict = None) -> dict:
         # Store that we're in dragon mode
         api.set_data("active", True)
         
+        # Show additional visual dragon features via actions
+        await asyncio.sleep(1)
+        await api.broadcast({
+            "type": "action", 
+            "action": {
+                "text": "🐲 *Dragon wings spread wide* 🔥",
+                "emoji": "🐲",
+                "color": "#ff6347"
+            }
+        })
+        await asyncio.sleep(1)
+        await api.broadcast({
+            "type": "action",
+            "action": {
+                "text": "🔥 *Eyes glow with dragon fire* 👁️",
+                "emoji": "🔥", 
+                "color": "#ff4500"
+            }
+        })
+        
         return {"success": True, "message": "Dragon mode activated! ROOOAAARRR!"}
     
     elif action == "deactivate_dragon_mode":
+        # Show dragon transformation back to normal (visual feedback)
+        await api.broadcast({
+            "type": "action",
+            "action": {
+                "text": "🤖 *Dragon returns to slumber* 💤",
+                "emoji": "🤖",
+                "color": "#00ffff"
+            }
+        })
+        
         # Hide dragon overlay
-        await api.hide_face_overlay("dragon_wings_eyes")
+        await api.hide_face_overlay("dragon_mode")
         
         # Deactivate dragon mode
         await api.set_mode("dragon_mode", False)
@@ -115,10 +155,20 @@ async def handle_action(action: str, params: dict = None) -> dict:
             dragon_action = random.choice(DRAGON_ACTIONS)
             await api.speak(f"{dragon_sound}")
             
-            # Show message with action and fire effects
+            # Show dragon action with visual effects
             fire_effects = ["🔥", "🐲", "💀", "⚡", "🌋"]
             effect = random.choice(fire_effects)
             await api.show_message(f"{effect} *{dragon_action}* {dragon_sound} {effect}")
+            
+            # Show action overlay with dragon effects
+            await api.broadcast({
+                "type": "action",
+                "action": {
+                    "text": f"{effect} *{dragon_action}* {effect}",
+                    "emoji": effect,
+                    "color": "#ff4500"
+                }
+            })
             
             # Set fierce emotion
             await api.set_emotion("fierce")
@@ -150,11 +200,37 @@ async def handle_action(action: str, params: dict = None) -> dict:
             # Show flight message with effects
             await api.show_message("🐲 *spreads mighty wings and takes to the sky* ROOOAAARRR! 🌤️")
             
+            # Show flight action overlays with visual effects
+            await api.broadcast({
+                "type": "action",
+                "action": {
+                    "text": "🐲 *spreads mighty wings* 🔥",
+                    "emoji": "🐲",
+                    "color": "#ff6347"
+                }
+            })
+            
             # Brief sequence of flight actions
             await asyncio.sleep(1)
             await api.show_message("🌬️ *soars high above the clouds* ✈️")
+            await api.broadcast({
+                "type": "action",
+                "action": {
+                    "text": "🌤️ *soars through clouds* 🌬️",
+                    "emoji": "🌤️",
+                    "color": "#87ceeb"
+                }
+            })
             await asyncio.sleep(1)
             await api.show_message("🐲 *circles majestically* The world looks so small from up here!")
+            await api.broadcast({
+                "type": "action",
+                "action": {
+                    "text": "🐲 *circles majestically* ⭕",
+                    "emoji": "🐲",
+                    "color": "#ff4500"
+                }
+            })
             
             # Set emotion to show excitement
             await api.set_emotion("excited")

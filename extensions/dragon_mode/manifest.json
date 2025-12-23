@@ -54,5 +54,12 @@
       "action": "dragon_flight",
       "handler": "handle_action"
     }
-  ]
+  ],
+  "provides": {
+    "emotions": true,
+    "jokes": false, 
+    "overlay": true,
+    "sounds": true,
+    "handler": true
+  }
 }
