@@ -321,18 +321,31 @@ async def force_reset_to_remote():
 
 @router.post("/push-logs")
 async def push_logs():
-    """Push logs to the 'logs' branch for remote debugging"""
-    import os
+    """Push debug logs to GitHub logs branch via API"""
+    import base64
+    import httpx
     from datetime import datetime
+    from .secrets import get_secret, has_secret
+    from .config import get_config_value
 
-    logs_branch = "logs"
+    # Check for GitHub token
+    if not has_secret("GITHUB_TOKEN"):
+        return {"success": False, "error": "GitHub token not configured"}
+
+    github_token = get_secret("GITHUB_TOKEN")
+    owner = get_config_value("github.owner", "")
+    repo = get_config_value("github.repo", "")
+
+    if not owner or not repo:
+        return {"success": False, "error": "GitHub owner/repo not configured"}
+
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_filename = f"enor_{timestamp}.log"
 
     # Collect logs
     log_content = f"=== E-NOR Service Logs ===\nCollected at: {datetime.now().isoformat()}\n\n"
 
-    # Get journalctl logs
+    # Get journalctl logs (if running via systemd)
     try:
         result = subprocess.run(
             ["journalctl", "-u", "enor", "--no-pager", "-n", "1000"],
@@ -340,87 +353,92 @@ async def push_logs():
             text=True,
             timeout=30
         )
-        log_content += result.stdout if result.returncode == 0 else "No journalctl logs available\n"
+        if result.returncode == 0 and result.stdout.strip():
+            log_content += result.stdout
+        else:
+            log_content += "No journalctl logs available (may be running via nohup)\n"
     except Exception as e:
         log_content += f"Failed to get journalctl logs: {e}\n"
+
+    # Get file-based logs (from nohup or file logging)
+    log_content += "\n=== File-based Logs (enor.log) ===\n"
+    enor_log = PROJECT_ROOT / "logs" / "enor.log"
+    if enor_log.exists():
+        try:
+            result = subprocess.run(
+                ["tail", "-n", "500", str(enor_log)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            log_content += result.stdout if result.returncode == 0 else "Failed to read enor.log\n"
+        except Exception as e:
+            log_content += f"Failed to read enor.log: {e}\n"
+    else:
+        log_content += "enor.log not found\n"
 
     # Add system info
     log_content += "\n=== System Info ===\n"
     try:
         import socket
         log_content += f"Hostname: {socket.gethostname()}\n"
-
         uptime_result = subprocess.run(["uptime"], capture_output=True, text=True, timeout=5)
         log_content += f"Uptime: {uptime_result.stdout.strip()}\n"
-
         free_result = subprocess.run(["free", "-h"], capture_output=True, text=True, timeout=5)
         log_content += f"Memory:\n{free_result.stdout}\n"
     except Exception as e:
         log_content += f"Failed to get system info: {e}\n"
 
-    # Save current branch
-    success, current_branch = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
-    if not success:
-        return {"success": False, "error": f"Failed to get current branch: {current_branch}"}
+    # Push to GitHub via API
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    api_base = f"https://api.github.com/repos/{owner}/{repo}"
 
-    # Fetch logs branch
-    run_git_command(["fetch", "origin", logs_branch], timeout=60)
+    async with httpx.AsyncClient() as client:
+        # Check if logs branch exists
+        branch_resp = await client.get(f"{api_base}/branches/logs", headers=headers)
 
-    # Check if logs branch exists remotely
-    success, _ = run_git_command(["ls-remote", "--heads", "origin", logs_branch])
-    branch_exists = success and logs_branch in _
+        if branch_resp.status_code == 404:
+            # Create logs branch from main
+            main_resp = await client.get(f"{api_base}/git/ref/heads/main", headers=headers)
+            if main_resp.status_code != 200:
+                return {"success": False, "error": "Failed to get main branch"}
 
-    try:
-        if branch_exists:
-            # Checkout existing logs branch
-            run_git_command(["checkout", logs_branch])
-            run_git_command(["pull", "origin", logs_branch, "--rebase"])
+            main_sha = main_resp.json()["object"]["sha"]
+            create_resp = await client.post(
+                f"{api_base}/git/refs",
+                headers=headers,
+                json={"ref": "refs/heads/logs", "sha": main_sha}
+            )
+            if create_resp.status_code not in [200, 201]:
+                return {"success": False, "error": f"Failed to create logs branch: {create_resp.text}"}
+
+        # Create/update file via Contents API
+        file_path = f"logs/{log_filename}"
+        content_b64 = base64.b64encode(log_content.encode()).decode()
+
+        put_resp = await client.put(
+            f"{api_base}/contents/{file_path}",
+            headers=headers,
+            json={
+                "message": f"Log snapshot: {timestamp}",
+                "content": content_b64,
+                "branch": "logs"
+            }
+        )
+
+        if put_resp.status_code in [200, 201]:
+            return {
+                "success": True,
+                "message": "Logs pushed to GitHub",
+                "log_file": log_filename,
+                "branch": "logs",
+                "url": f"https://github.com/{owner}/{repo}/blob/logs/logs/{log_filename}"
+            }
         else:
-            # Create orphan branch
-            run_git_command(["checkout", "--orphan", logs_branch])
-            run_git_command(["rm", "-rf", "."])
-
-            # Create README
-            readme_path = PROJECT_ROOT / "README.md"
-            readme_path.write_text("# E-NOR Debug Logs\n\nThis branch contains debug logs pushed from the Pi.\nIt is excluded from auto-merge to main.\n")
-            run_git_command(["add", "README.md"])
-            run_git_command(["commit", "-m", "Initialize logs branch"])
-
-        # Create logs directory
-        logs_dir = PROJECT_ROOT / "logs"
-        logs_dir.mkdir(exist_ok=True)
-
-        # Write log file
-        log_path = logs_dir / log_filename
-        log_path.write_text(log_content)
-
-        # Clean up old logs (keep last 20)
-        log_files = sorted(logs_dir.glob("enor_*.log"), reverse=True)
-        for old_log in log_files[20:]:
-            old_log.unlink()
-
-        # Commit and push
-        run_git_command(["add", "logs/"])
-        success, commit_output = run_git_command(["commit", "-m", f"Log snapshot: {timestamp}"])
-
-        if not success and "nothing to commit" in commit_output:
-            return {"success": True, "message": "No new logs to commit", "log_file": None}
-
-        success, push_output = run_git_command(["push", "-u", "origin", logs_branch], timeout=60)
-
-        if not success:
-            return {"success": False, "error": f"Push failed: {push_output}"}
-
-        return {
-            "success": True,
-            "message": "Logs pushed successfully",
-            "log_file": log_filename,
-            "branch": logs_branch
-        }
-
-    finally:
-        # Always return to original branch
-        run_git_command(["checkout", current_branch])
+            return {"success": False, "error": f"Failed to push: {put_resp.text}"}
 
 
 @router.get("/log")

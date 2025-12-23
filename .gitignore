@@ -3,6 +3,7 @@ __pycache__/
 venv/
 .env
 logs/
+debug_logs/
 *.log
 .DS_Store
 secrets.json
