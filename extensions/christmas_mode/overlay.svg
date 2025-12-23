@@ -1,0 +1,175 @@
+<!-- Christmas Mode Overlay: Festive Santa hat with holiday decorations -->
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients for Christmas features -->
+    <linearGradient id="hatGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0000" />
+      <stop offset="50%" style="stop-color:#dc143c" />
+      <stop offset="100%" style="stop-color:#b22222" />
+    </linearGradient>
+
+    <radialGradient id="furGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff" />
+      <stop offset="70%" style="stop-color:#f0f0f0" />
+      <stop offset="100%" style="stop-color:#e0e0e0" />
+    </radialGradient>
+
+    <radialGradient id="pompomGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff" />
+      <stop offset="100%" style="stop-color:#f5f5f5" />
+    </radialGradient>
+
+    <!-- Sparkle effect filter -->
+    <filter id="sparkle">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Light twinkle animation -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Santa Hat Main Body -->
+  <path d="M 200 80 Q 150 40 120 90 Q 110 120 130 150 Q 200 170 270 150 Q 290 120 280 90 Q 250 40 200 80 Z" 
+        fill="url(#hatGradient)" 
+        stroke="#8b0000" 
+        stroke-width="2"/>
+
+  <!-- Hat Shadow/Depth -->
+  <path d="M 200 80 Q 180 60 160 85 Q 150 110 170 140 Q 200 150 240 140 Q 260 110 250 85 Q 230 60 200 80 Z" 
+        fill="#8b0000" 
+        opacity="0.3"/>
+
+  <!-- White Fur Trim -->
+  <ellipse cx="200" cy="155" rx="75" ry="15" fill="url(#furGradient)" stroke="#ddd" stroke-width="1"/>
+  
+  <!-- Fur texture details -->
+  <g fill="url(#furGradient)" opacity="0.8">
+    <circle cx="140" cy="152" r="8"/>
+    <circle cx="160" cy="158" r="6"/>
+    <circle cx="180" cy="155" r="7"/>
+    <circle cx="200" cy="160" r="8"/>
+    <circle cx="220" cy="155" r="7"/>
+    <circle cx="240" cy="158" r="6"/>
+    <circle cx="260" cy="152" r="8"/>
+  </g>
+
+  <!-- Santa Hat Pompom -->
+  <circle cx="120" cy="90" r="18" fill="url(#pompomGradient)" stroke="#ddd" stroke-width="1"/>
+  <!-- Pompom texture -->
+  <circle cx="115" cy="85" r="4" fill="#ffffff" opacity="0.9"/>
+  <circle cx="125" cy="88" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="118" cy="95" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="123" cy="82" r="2" fill="#ffffff" opacity="0.7"/>
+
+  <!-- Christmas Lights String -->
+  <path d="M 80 200 Q 120 180 160 200 Q 200 220 240 200 Q 280 180 320 200" 
+        stroke="#2d5016" 
+        stroke-width="3" 
+        fill="none"/>
+
+  <!-- Christmas Light Bulbs -->
+  <!-- Red light -->
+  <circle cx="100" cy="195" r="8" fill="#ff0000" filter="url(#glow)">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Green light -->
+  <circle cx="140" cy="185" r="8" fill="#00ff00" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Blue light -->
+  <circle cx="180" cy="205" r="8" fill="#0000ff" filter="url(#glow)">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Yellow light -->
+  <circle cx="220" cy="185" r="8" fill="#ffff00" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="2.2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Purple light -->
+  <circle cx="260" cy="205" r="8" fill="#ff00ff" filter="url(#glow)">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="1.9s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Orange light -->
+  <circle cx="300" cy="195" r="8" fill="#ffa500" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="2.3s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Holly Decoration on Hat -->
+  <g transform="translate(200, 120)">
+    <!-- Holly leaves -->
+    <path d="M -15 -5 Q -20 -15 -10 -12 Q -5 -18 0 -12 Q 5 -18 10 -12 Q 20 -15 15 -5 Q 10 0 5 -8 Q 0 -3 -5 -8 Q -10 0 -15 -5 Z" 
+          fill="#00aa00" 
+          stroke="#006600" 
+          stroke-width="1"/>
+    
+    <!-- Holly berries -->
+    <circle cx="-8" cy="-8" r="3" fill="#ff0000"/>
+    <circle cx="0" cy="-10" r="3" fill="#ff0000"/>
+    <circle cx="8" cy="-8" r="3" fill="#ff0000"/>
+  </g>
+
+  <!-- Sparkle Effects -->
+  <g filter="url(#sparkle)" opacity="0.7">
+    <circle cx="150" cy="120" r="2" fill="#ffffff">
+      <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="250" cy="130" r="2" fill="#ffffff">
+      <animate attributeName="opacity" values="1;0;1" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="180" cy="100" r="2" fill="#ffffff">
+      <animate attributeName="opacity" values="0;1;0" dur="2.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="220" cy="110" r="2" fill="#ffffff">
+      <animate attributeName="opacity" values="1;0;1" dur="1.7s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Jingle Bells -->
+  <g transform="translate(320, 170)">
+    <!-- Bell 1 -->
+    <ellipse cx="0" cy="0" rx="6" ry="8" fill="#ffd700" stroke="#daa520" stroke-width="1">
+      <animateTransform attributeName="transform" type="rotate"
+                        values="0 0 0; 10 0 0; -10 0 0; 0 0 0" dur="2s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- Bell highlight -->
+    <ellipse cx="-2" cy="-3" rx="2" ry="3" fill="#ffff99" opacity="0.8"/>
+    
+    <!-- Bell 2 -->
+    <ellipse cx="15" cy="5" rx="5" ry="7" fill="#ffd700" stroke="#daa520" stroke-width="1">
+      <animateTransform attributeName="transform" type="rotate"
+                        values="0 15 5; -8 15 5; 8 15 5; 0 15 5" dur="1.8s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- Bell 2 highlight -->
+    <ellipse cx="13" cy="2" rx="1.5" ry="2.5" fill="#ffff99" opacity="0.8"/>
+  </g>
+
+  <!-- More Sparkle Effects Around the Hat -->
+  <g filter="url(#sparkle)" opacity="0.6">
+    <circle cx="110" cy="70" r="1.5" fill="#ffff00">
+      <animate attributeName="opacity" values="0;1;0" dur="2.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="290" cy="85" r="1.5" fill="#ffffff">
+      <animate attributeName="opacity" values="1;0;1" dur="1.9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="60" r="1.5" fill="#ffff00">
+      <animate attributeName="opacity" values="0;1;0" dur="2.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="230" cy="70" r="1.5" fill="#ffffff">
+      <animate attributeName="opacity" values="1;0;1" dur="2.0s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>
