@@ -210,6 +210,128 @@
       animation: discoShake 0.3s ease-in-out infinite;
     }
 
+    /* Active mode indicator */
+    #active-mode-indicator {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 20, 40, 0.9);
+      border: 2px solid #00ffff;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #00ffff;
+      font-weight: bold;
+      display: none;
+      z-index: 50;
+      box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+    }
+    #active-mode-indicator.visible {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #active-mode-indicator .mode-emoji {
+      font-size: 16px;
+    }
+    #active-mode-indicator .exit-mode {
+      background: #ff4444;
+      border: none;
+      color: white;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+    }
+    #active-mode-indicator .exit-mode:hover {
+      background: #ff6666;
+    }
+
+    /* Face overlay container for extension overlays */
+    #face-overlay-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #face-overlay-container svg {
+      width: 200px;
+      height: 200px;
+      position: absolute;
+    }
+
+    /* Extension panel container */
+    #extension-panel-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 200;
+      display: none;
+      max-width: 90%;
+      max-height: 80%;
+      overflow: auto;
+    }
+    #extension-panel-container.visible {
+      display: block;
+    }
+    #extension-panel-container .panel-content {
+      background: rgba(10, 20, 40, 0.95);
+      border: 2px solid #00ffff;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 255, 255, 0.3);
+    }
+
+    /* Mode selector in quick actions */
+    #mode-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 10px;
+      border-top: 1px solid #333;
+      background: rgba(0, 20, 40, 0.5);
+    }
+    #mode-selector:empty {
+      display: none;
+    }
+    .mode-btn {
+      padding: 6px 12px;
+      border: 2px solid #00ffff;
+      border-radius: 15px;
+      background: transparent;
+      color: #00ffff;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mode-btn:hover {
+      background: rgba(0, 255, 255, 0.2);
+      transform: scale(1.05);
+    }
+    .mode-btn.active {
+      background: #00ffff;
+      color: #000;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+    .mode-btn .mode-emoji {
+      font-size: 14px;
+    }
+
     /* Action display overlay */
     #action-overlay {
       position: absolute;
@@ -1513,9 +1635,17 @@
       <span>&#9881;</span>
       <span id="pending-count">0</span> pending
     </div>
+    <div id="active-mode-indicator">
+      <span class="mode-emoji">🎭</span>
+      <span class="mode-name">Mode</span>
+      <button class="exit-mode" onclick="exitActiveMode()" title="Exit mode">×</button>
+    </div>
     <div id="status"></div>
     <button id="versions-btn" onclick="openVersions()">📝</button>
     <button id="settings-btn" onclick="openSettings()">&#9881;</button>
+
+    <!-- Face overlay container for extension visuals -->
+    <div id="face-overlay-container"></div>
 
     <svg id="face-svg" width="200" height="200" viewBox="0 0 400 400">
       <circle id="ring" cx="200" cy="200" r="180" fill="none" stroke="#00ffff" stroke-width="8" opacity="0.4"/>
@@ -1560,6 +1690,11 @@
       <button class="quick-btn" onclick="setEmotion('mysterious')">Mysterious</button>
       <button class="quick-btn" onclick="setEmotion('mischievous')">Mischievous</button>
       <button class="quick-btn" onclick="toggleDisco()" id="disco-btn">DISCO</button>
+    </div>
+
+    <!-- Mode selector - dynamically populated from extensions -->
+    <div id="mode-selector">
+      <!-- Mode buttons will be loaded here -->
     </div>
 
     <div id="chat-messages">
@@ -1692,6 +1827,13 @@
     </div>
   </div>
 
+  <!-- Extension Panel Container -->
+  <div id="extension-panel-container">
+    <div class="panel-content" id="extension-panel-content">
+      <!-- Extension panels will be inserted here -->
+    </div>
+  </div>
+
   <!-- Dev Console -->
   <div id="dev-console">
     <div id="dev-console-header">
@@ -1769,8 +1911,9 @@
       return [primary, ...variants];
     }
 
-    // Load config on startup
+    // Load config and modes on startup
     loadConfig();
+    loadModes();
 
     // Intercept console methods
     const originalConsole = {
@@ -1912,9 +2055,40 @@
         } else if (msg.type === 'state') {
           applyEmotion(msg.data.emotion);
           if (msg.data.disco_mode) toggleDisco();
+          if (msg.data.active_mode) activateMode(msg.data.active_mode);
         } else if (msg.type === 'action') {
           // Real-time action display on face
           showActionOnFace(msg.action);
+        } else if (msg.type === 'set_mode') {
+          // Mode activation/deactivation from extensions
+          if (msg.enabled) {
+            activateMode(msg.mode, msg.mode_name);
+          } else {
+            deactivateMode(msg.mode);
+          }
+        } else if (msg.type === 'show_overlay') {
+          // Show face overlay from extension
+          showFaceOverlay(msg.overlay_id, msg.extension_id);
+        } else if (msg.type === 'hide_overlay') {
+          // Hide face overlay
+          hideFaceOverlay(msg.overlay_id, msg.extension_id);
+        } else if (msg.type === 'show_panel') {
+          // Show extension panel
+          showExtensionPanel(msg.html, msg.panel_id);
+        } else if (msg.type === 'hide_panel') {
+          // Hide extension panel
+          hideExtensionPanel(msg.panel_id);
+        } else if (msg.type === 'update_panel') {
+          // Update extension panel content
+          updateExtensionPanel(msg.updates, msg.panel_id);
+        } else if (msg.type === 'speak') {
+          // Extension wants to speak
+          if (msg.text) {
+            speak(msg.text);
+          }
+        } else if (msg.type === 'play_sound') {
+          // Extension wants to play sound
+          playExtensionSound(msg.path);
         }
       };
     }
@@ -4184,6 +4358,244 @@
     function formatDate(dateString) {
       const date = new Date(dateString);
       return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // ==================== Mode System ====================
+    let activeMode = null;
+    let availableModes = [];
+    let loadedOverlays = {};
+
+    // Load available modes from extensions API
+    async function loadModes() {
+      try {
+        const response = await fetch('/api/extensions/modes');
+        if (response.ok) {
+          const data = await response.json();
+          availableModes = data.modes || [];
+          renderModeButtons();
+          console.log('Loaded', availableModes.length, 'modes');
+        }
+      } catch (e) {
+        console.warn('Could not load modes:', e);
+      }
+    }
+
+    // Render mode buttons in the mode selector
+    function renderModeButtons() {
+      const modeSelector = document.getElementById('mode-selector');
+      if (!modeSelector) return;
+
+      if (availableModes.length === 0) {
+        modeSelector.innerHTML = '';
+        return;
+      }
+
+      modeSelector.innerHTML = availableModes.map(mode => `
+        <button class="mode-btn ${activeMode === mode.id ? 'active' : ''}"
+                onclick="toggleMode('${mode.id}')"
+                style="border-color: ${mode.button_color}; ${activeMode === mode.id ? `background: ${mode.button_color}` : ''}"
+                title="${mode.description || mode.name}">
+          <span class="mode-emoji">${mode.button_emoji}</span>
+          <span>${mode.button_label}</span>
+        </button>
+      `).join('');
+    }
+
+    // Toggle a mode on/off
+    function toggleMode(modeId) {
+      if (activeMode === modeId) {
+        // Deactivate current mode
+        send({ type: 'chat', message: `deactivate ${modeId.replace(/_/g, ' ')}` });
+      } else {
+        // Activate new mode (deactivate old one first if needed)
+        send({ type: 'chat', message: `activate ${modeId.replace(/_/g, ' ')}` });
+      }
+    }
+
+    // Activate a mode (called from WebSocket message)
+    function activateMode(modeId, modeName) {
+      activeMode = modeId;
+      renderModeButtons();
+
+      // Find mode info
+      const mode = availableModes.find(m => m.id === modeId);
+
+      // Update active mode indicator
+      const indicator = document.getElementById('active-mode-indicator');
+      if (indicator) {
+        indicator.querySelector('.mode-emoji').textContent = mode?.button_emoji || '🎭';
+        indicator.querySelector('.mode-name').textContent = modeName || mode?.name || modeId;
+        indicator.classList.add('visible');
+        // Set border color if available
+        if (mode?.button_color) {
+          indicator.style.borderColor = mode.button_color;
+        }
+      }
+
+      // Update emotion-mode display
+      const emotionMode = document.getElementById('emotion-mode');
+      if (emotionMode) {
+        emotionMode.textContent = (modeName || mode?.name || modeId) + ' MODE';
+      }
+
+      console.log('Mode activated:', modeId);
+    }
+
+    // Deactivate a mode
+    function deactivateMode(modeId) {
+      if (activeMode === modeId) {
+        activeMode = null;
+        renderModeButtons();
+
+        // Hide active mode indicator
+        const indicator = document.getElementById('active-mode-indicator');
+        if (indicator) {
+          indicator.classList.remove('visible');
+          indicator.style.borderColor = '#00ffff';
+        }
+
+        // Reset emotion-mode display
+        const emotionMode = document.getElementById('emotion-mode');
+        if (emotionMode) {
+          emotionMode.textContent = emotions[currentEmotion]?.name + ' Mode' || 'Happy Mode';
+        }
+
+        console.log('Mode deactivated:', modeId);
+      }
+    }
+
+    // Exit active mode (button click handler)
+    function exitActiveMode() {
+      if (activeMode) {
+        send({ type: 'chat', message: `deactivate ${activeMode.replace(/_/g, ' ')}` });
+      }
+    }
+
+    // ==================== Face Overlays ====================
+
+    // Show a face overlay from an extension
+    async function showFaceOverlay(overlayId, extensionId) {
+      const container = document.getElementById('face-overlay-container');
+      if (!container) return;
+
+      // Check if already loaded
+      const existingId = `overlay-${extensionId}-${overlayId}`;
+      if (document.getElementById(existingId)) {
+        document.getElementById(existingId).style.display = 'block';
+        return;
+      }
+
+      // Fetch overlay SVG from extension
+      try {
+        const response = await fetch(`/api/extensions/${extensionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.face_overlays_count > 0) {
+            // Get overlays from the overlays endpoint
+            const overlaysResponse = await fetch('/api/extensions/overlays/all');
+            if (overlaysResponse.ok) {
+              const overlaysData = await overlaysResponse.json();
+              const overlay = overlaysData.overlays?.find(o => o._extension_id === extensionId);
+              if (overlay?.content) {
+                const wrapper = document.createElement('div');
+                wrapper.id = existingId;
+                wrapper.innerHTML = overlay.content;
+                container.appendChild(wrapper);
+                loadedOverlays[existingId] = true;
+                console.log('Overlay shown:', existingId);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load overlay:', e);
+      }
+    }
+
+    // Hide a face overlay
+    function hideFaceOverlay(overlayId, extensionId) {
+      const existingId = overlayId ? `overlay-${extensionId}-${overlayId}` : null;
+      const container = document.getElementById('face-overlay-container');
+
+      if (existingId) {
+        const el = document.getElementById(existingId);
+        if (el) {
+          el.style.display = 'none';
+          console.log('Overlay hidden:', existingId);
+        }
+      } else if (extensionId) {
+        // Hide all overlays from this extension
+        container.querySelectorAll(`[id^="overlay-${extensionId}"]`).forEach(el => {
+          el.style.display = 'none';
+        });
+      } else {
+        // Hide all overlays
+        container.querySelectorAll('[id^="overlay-"]').forEach(el => {
+          el.style.display = 'none';
+        });
+      }
+    }
+
+    // ==================== Extension Panels ====================
+
+    // Show an extension panel
+    function showExtensionPanel(html, panelId) {
+      const container = document.getElementById('extension-panel-container');
+      const content = document.getElementById('extension-panel-content');
+      if (!container || !content) return;
+
+      content.innerHTML = html;
+      content.dataset.panelId = panelId || 'default';
+      container.classList.add('visible');
+      console.log('Panel shown:', panelId);
+    }
+
+    // Hide extension panel
+    function hideExtensionPanel(panelId) {
+      const container = document.getElementById('extension-panel-container');
+      const content = document.getElementById('extension-panel-content');
+      if (!container || !content) return;
+
+      // Only hide if panel ID matches or no ID specified
+      if (!panelId || content.dataset.panelId === panelId) {
+        container.classList.remove('visible');
+        content.innerHTML = '';
+        delete content.dataset.panelId;
+        console.log('Panel hidden:', panelId);
+      }
+    }
+
+    // Update extension panel content
+    function updateExtensionPanel(updates, panelId) {
+      const content = document.getElementById('extension-panel-content');
+      if (!content) return;
+
+      // Only update if panel ID matches
+      if (content.dataset.panelId === panelId || !panelId) {
+        // Apply updates to specific elements within the panel
+        if (updates.text !== undefined) {
+          const textEl = content.querySelector('.panel-text');
+          if (textEl) textEl.textContent = updates.text;
+        }
+        if (updates.html !== undefined) {
+          content.innerHTML = updates.html;
+          content.dataset.panelId = panelId || 'default';
+        }
+        console.log('Panel updated:', panelId);
+      }
+    }
+
+    // ==================== Extension Sounds ====================
+
+    function playExtensionSound(path) {
+      if (!path) return;
+      try {
+        const audio = new Audio(path);
+        audio.volume = 0.7;
+        audio.play().catch(e => console.warn('Could not play sound:', e));
+      } catch (e) {
+        console.warn('Sound playback error:', e);
+      }
     }
 
     // ==================== Screenshot Functionality ====================

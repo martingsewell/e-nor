@@ -2,10 +2,15 @@
   "id": "dog_mode",
   "name": "Dog Mode",
   "description": "A mode with floppy ears, tongue out, and fun dog sounds",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Ronnie",
   "type": "mode",
   "enabled": true,
+  "ui": {
+    "button_label": "Dog",
+    "button_emoji": "🐶",
+    "button_color": "#8B4513"
+  },
   "voice_triggers": [
     {
       "phrases": [

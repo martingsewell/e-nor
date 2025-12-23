@@ -71,6 +71,14 @@ jobs:
           direct_prompt: |
             You are implementing an EXTENSION for E-NOR, a friendly robot companion.
 
+            ## IMPORTANT: Read the Extension Development Guide
+            Before implementing, READ the file `AGENT_GUIDE.md` in the repository root.
+            It contains comprehensive documentation on:
+            - How to create mode extensions with proper UI integration
+            - The full Extension API reference
+            - How to create custom emotions, overlays, and sounds
+            - Best practices and common mistakes to avoid
+
             ## Request
             ${{ github.event.issue.title }}
 
@@ -89,7 +97,7 @@ jobs:
             - hardware/ folder (FORBIDDEN)
             - Any other existing files
 
-            ### Extension manifest template:
+            ### For MODE extensions, include UI config in manifest.json:
             ```json
             {
               "id": "extension_id",
@@ -97,25 +105,46 @@ jobs:
               "description": "What it does",
               "version": "1.0.0",
               "author": "Voice request",
-              "type": "feature",
+              "type": "mode",
               "enabled": true,
-              "voice_triggers": [{"phrases": ["trigger phrase"], "action": "action_name"}],
-              "provides": {"emotions": false, "jokes": false, "overlay": false, "sounds": false, "handler": false}
+              "voice_triggers": [
+                {"phrases": ["activate extension", "turn on extension"], "action": "activate_extension_id"},
+                {"phrases": ["deactivate extension", "turn off extension"], "action": "deactivate_extension_id"}
+              ],
+              "ui": {
+                "button_label": "Name",
+                "button_emoji": "🎭",
+                "button_color": "#00ffff"
+              },
+              "provides": {"emotions": true, "overlay": true, "sounds": true, "handler": true}
             }
             ```
 
-            ### Handler template (handler.py):
+            ### Handler template for modes (handler.py):
             ```python
+            from pathlib import Path
             from core.server.extension_api import ExtensionAPI
-            api = ExtensionAPI("extension_id")
+            api = ExtensionAPI("extension_id", Path(__file__).parent)
 
-            async def handle_action(action: str, params: dict):
-                if action == "action_name":
-                    api.speak("Response text")
+            async def handle_action(action: str, params: dict = None):
+                if action == "activate_extension_id":
+                    await api.set_mode("extension_id", True)
+                    await api.set_emotion("custom_emotion")
+                    await api.show_face_overlay("extension_id")
+                    await api.speak("Mode activated!")
+                    api.set_data("active", True)
                     return {"success": True}
+                elif action == "deactivate_extension_id":
+                    await api.set_mode("extension_id", False)
+                    await api.set_emotion("happy")
+                    await api.hide_face_overlay("extension_id")
+                    await api.speak("Back to normal!")
+                    api.set_data("active", False)
+                    return {"success": True}
+                return {"success": False}
             ```
 
-            Please create ONLY the extension files, commit, and push to a new branch.
+            Please read AGENT_GUIDE.md first, then create the extension files, commit, and push to a new branch.
           allowed_tools: "Edit,Write,Read,Bash,Glob,Grep"
           timeout_minutes: 10
 

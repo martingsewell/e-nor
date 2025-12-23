@@ -164,6 +164,8 @@ def create_extension_issue(title: str, description: str, child_request: str) -> 
 
 ## Instructions for Claude Code
 
+**IMPORTANT: First read `AGENT_GUIDE.md`** in the repository root for comprehensive documentation.
+
 **Create this feature as an extension.** Place all files in `extensions/` folder.
 
 ### CRITICAL RULES - READ CAREFULLY

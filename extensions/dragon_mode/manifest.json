@@ -2,10 +2,15 @@
   "id": "dragon_mode",
   "name": "Dragon Mode",
   "description": "A mode with dragon wings, dragon sounds (roars and growls), fire effects, and dragon-like behaviors",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "the child",
   "type": "mode",
   "enabled": true,
+  "ui": {
+    "button_label": "Dragon",
+    "button_emoji": "🐲",
+    "button_color": "#ff4500"
+  },
   "voice_triggers": [
     {
       "phrases": [

@@ -2,10 +2,15 @@
   "id": "cat_mode",
   "name": "Cat Mode",
   "description": "A mode with cat ears, whiskers overlay, cat sounds (meows and purrs), and cat-like behaviors where I act more like a cat and less chatty",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "the child",
   "type": "mode",
   "enabled": true,
+  "ui": {
+    "button_label": "Cat",
+    "button_emoji": "🐱",
+    "button_color": "#ff9900"
+  },
   "voice_triggers": [
     {
       "phrases": [

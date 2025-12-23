@@ -452,6 +452,29 @@ async def get_face_overlays() -> Dict:
     return {"overlays": get_all_face_overlays()}
 
 
+@router.get("/modes")
+async def get_modes() -> Dict:
+    """Get all mode extensions for the mode selector UI"""
+    modes = []
+    for ext in get_enabled_extensions():
+        if ext.extension_type == "mode":
+            # Get UI config from manifest if available
+            ui_config = ext.manifest.get("ui", {})
+            modes.append({
+                "id": ext.id,
+                "name": ext.name,
+                "description": ext.description,
+                "button_label": ui_config.get("button_label", ext.name.replace(" Mode", "")),
+                "button_emoji": ui_config.get("button_emoji", "🎭"),
+                "button_color": ui_config.get("button_color", "#00ffff"),
+                "has_overlay": len(ext.face_overlays) > 0,
+                "has_emotion": len(ext.emotions) > 0,
+                "has_sounds": (ext.path / "sounds").exists(),
+                "enabled": ext.enabled
+            })
+    return {"modes": modes, "total": len(modes)}
+
+
 @router.post("/reload")
 async def reload_extensions() -> Dict:
     """Reload all extensions"""
