@@ -9,6 +9,9 @@ from pathlib import Path
 import json
 import asyncio
 
+# Global registry of API instances - must be defined before ExtensionAPI class
+_api_instances: Dict[str, "ExtensionAPI"] = {}
+
 
 class ExtensionAPI:
     """
@@ -23,6 +26,8 @@ class ExtensionAPI:
         self._broadcast_func = None
         self._speak_func = None
         self._emotion_func = None
+        # Auto-register this instance so broadcast function can be set later
+        _api_instances[extension_id] = self
 
     # ==================== COMMUNICATION ====================
 
@@ -51,7 +56,10 @@ class ExtensionAPI:
         """Broadcast a message to all connected clients via WebSocket"""
         if self._broadcast_func:
             data["_extension"] = self.extension_id
+            print(f"[ExtensionAPI] Broadcasting from {self.extension_id}: {data.get('type', 'unknown')}")
             await self._broadcast_func(data)
+        else:
+            print(f"[ExtensionAPI] WARNING: No broadcast function set for {self.extension_id}, message dropped: {data.get('type', 'unknown')}")
 
     # ==================== EMOTION & APPEARANCE ====================
 
@@ -288,9 +296,6 @@ class ExtensionAPI:
 
 
 # Factory function to create API instances for extensions
-_api_instances: Dict[str, ExtensionAPI] = {}
-
-
 def get_extension_api(extension_id: str, extension_path: Path) -> ExtensionAPI:
     """Get or create an ExtensionAPI instance for an extension"""
     if extension_id not in _api_instances:
@@ -300,6 +305,7 @@ def get_extension_api(extension_id: str, extension_path: Path) -> ExtensionAPI:
 
 def set_broadcast_function(func: Callable) -> None:
     """Set the broadcast function for all extension APIs"""
+    print(f"[ExtensionAPI] Setting broadcast function for {len(_api_instances)} extension APIs: {list(_api_instances.keys())}")
     for api in _api_instances.values():
         api._broadcast_func = func
 

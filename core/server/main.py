@@ -19,6 +19,7 @@ from .code_requests_log import router as requests_router
 from .version_control import router as versions_router
 from .config import router as config_router
 from .plugin_loader import router as extensions_router, init_extensions, get_all_extensions
+from .extension_api import set_broadcast_function
 from .extension_request import router as extension_request_router
 from .extension_versions import router as extension_versions_router
 from .motor_control import router as motor_router
@@ -69,6 +70,8 @@ async def startup_event():
     """Initialize extensions and other startup tasks"""
     print("E-NOR server starting up...")
     init_extensions()
+    # Connect the broadcast function to all extension APIs
+    set_broadcast_function(broadcast)
     print(f"Loaded {len(get_all_extensions())} extensions")
 
 
