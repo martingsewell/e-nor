@@ -1911,9 +1911,10 @@
       return [primary, ...variants];
     }
 
-    // Load config and modes on startup
+    // Load config, modes, and custom emotions on startup
     loadConfig();
     loadModes();
+    loadCustomEmotions();
 
     // Intercept console methods
     const originalConsole = {
@@ -4358,6 +4359,126 @@
     function formatDate(dateString) {
       const date = new Date(dateString);
       return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // ==================== Custom Emotions ====================
+
+    // Load custom emotions from extensions
+    async function loadCustomEmotions() {
+      try {
+        const response = await fetch('/api/extensions/emotions/all');
+        if (response.ok) {
+          const data = await response.json();
+          const customEmotions = data.emotions || [];
+
+          for (const emotionData of customEmotions) {
+            const converted = convertCustomEmotion(emotionData);
+            if (converted) {
+              // Add to global emotions object
+              for (const [id, emotion] of Object.entries(converted)) {
+                emotions[id] = emotion;
+                console.log('Loaded custom emotion:', id);
+              }
+            }
+          }
+          console.log('Custom emotions loaded');
+        }
+      } catch (e) {
+        console.warn('Could not load custom emotions:', e);
+      }
+    }
+
+    // Convert extension emotion format to frontend format
+    function convertCustomEmotion(emotionData) {
+      if (!emotionData) return null;
+
+      const result = {};
+      const extensionId = emotionData._extension_id || 'unknown';
+
+      // Handle different emotion.json formats
+      // Format 1: Direct emotion definition with id as key (dragon_mode style)
+      // Format 2: Wrapped in "emotions" object (cat_mode style)
+      const emotionsToProcess = emotionData.emotions || { [emotionData.id || extensionId]: emotionData };
+
+      for (const [emotionId, def] of Object.entries(emotionsToProcess)) {
+        if (!def || emotionId === 'meta' || emotionId === '_extension_id') continue;
+
+        // Extract color from definition
+        let primaryColor = '#00ffff';
+        let backgroundColor = 'linear-gradient(45deg, #1a3a4a, #2a4a6a)';
+
+        if (def.colors) {
+          primaryColor = def.colors.primary || def.colors.accent || primaryColor;
+          const baseColor = primaryColor.replace('#', '');
+          // Create darker background from primary color
+          backgroundColor = `linear-gradient(45deg, #1a2a3a, #2a3a4a)`;
+        }
+        if (def.effects?.aura?.color) {
+          primaryColor = def.effects.aura.color;
+        }
+        if (def.eyes?.left?.color) {
+          primaryColor = def.eyes.left.color;
+        }
+
+        // Build the emotion config
+        const emotion = {
+          name: def.name || emotionId.charAt(0).toUpperCase() + emotionId.slice(1),
+          // Eye settings - use defaults with some variation based on definition
+          eyeH: def.eyes?.left?.size ? Math.round(30 * def.eyes.left.size) : 30,
+          eyeY: 140,
+          pupilY: 145,
+          // Mouth - use default happy or customize based on shape
+          mouth: getMouthPath(def.mouth?.shape || 'smile'),
+          // Eyebrow angle
+          browAngle: def.eyebrows?.left?.rotation || 0,
+          // Colors
+          colors: [primaryColor, adjustColor(primaryColor, -20), adjustColor(primaryColor, 20)],
+          background: backgroundColor,
+          // Store original for reference
+          _custom: true,
+          _extensionId: extensionId
+        };
+
+        // Add glow effect flag if defined
+        if (def.eyes?.left?.glow || def.effects?.aura?.pulsate) {
+          emotion._glow = true;
+        }
+
+        result[emotionId] = emotion;
+      }
+
+      return Object.keys(result).length > 0 ? result : null;
+    }
+
+    // Get mouth SVG path for different shapes
+    function getMouthPath(shape) {
+      const mouthPaths = {
+        'smile': 'M 120 220 Q 200 280 280 220',
+        'open_joy': 'M 110 210 Q 200 290 290 210',
+        'snarl': 'M 130 230 L 160 240 L 200 230 L 240 240 L 270 230',
+        'roar': 'M 120 220 Q 200 300 280 220',
+        'small_satisfied_smile': 'M 150 235 Q 200 255 250 235',
+        'tiny_yawn': 'M 170 230 A 30 25 0 1 1 230 230 A 30 25 0 1 1 170 230',
+        'serene_smile': 'M 140 230 Q 200 260 260 230',
+        'small_o_shape': 'M 175 235 A 25 20 0 1 1 225 235 A 25 20 0 1 1 175 235',
+        'playful_smirk': 'M 140 230 Q 180 250 220 235 Q 250 225 260 235',
+        'sleepy_droopy': 'M 160 240 Q 200 250 240 240'
+      };
+      return mouthPaths[shape] || mouthPaths['smile'];
+    }
+
+    // Adjust color brightness
+    function adjustColor(hex, amount) {
+      if (!hex || !hex.startsWith('#')) return hex;
+      let color = hex.replace('#', '');
+      if (color.length === 3) {
+        color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+      }
+      const num = parseInt(color, 16);
+      let r = Math.min(255, Math.max(0, (num >> 16) + amount));
+      let g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+      let b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+      return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
     }
 
     // ==================== Mode System ====================
