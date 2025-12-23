@@ -745,10 +745,17 @@ async def chat(message: ChatMessage) -> Dict:
         # Handle all actions
         action_results = await handle_actions(parsed.get("actions", []), message.message)
 
-        # Add assistant response to history (store the message, not full JSON)
+        # Build the message to store in history
+        # Include proposal details so context isn't lost if conversation resumes
+        stored_message = parsed["message"]
+        if action_results["extension_proposals"]:
+            proposal = action_results["extension_proposals"][0]
+            stored_message += f"\n\n[I proposed creating: \"{proposal['title']}\" - {proposal['description']}]"
+
+        # Add assistant response to history
         conversations[conv_id].append({
             "role": "assistant",
-            "content": parsed["message"]
+            "content": stored_message
         })
 
         print(f"Chat: '{message.message}' -> '{parsed['message'][:50]}...' [{parsed['emotion']}]")
