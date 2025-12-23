@@ -4628,40 +4628,57 @@
 
     // Show a face overlay from an extension
     async function showFaceOverlay(overlayId, extensionId) {
+      console.log('showFaceOverlay called:', overlayId, extensionId);
       const container = document.getElementById('face-overlay-container');
-      if (!container) return;
+      if (!container) {
+        console.error('face-overlay-container not found!');
+        return;
+      }
 
       // Check if already loaded
       const existingId = `overlay-${extensionId}-${overlayId}`;
       if (document.getElementById(existingId)) {
         document.getElementById(existingId).style.display = 'block';
+        console.log('Showing existing overlay:', existingId);
         return;
       }
 
       // Fetch overlay SVG from extension
       try {
         const response = await fetch(`/api/extensions/${extensionId}`);
+        console.log('Extension API response:', response.status);
         if (response.ok) {
           const data = await response.json();
+          console.log('face_overlays_count:', data.face_overlays_count);
           if (data.face_overlays_count > 0) {
             // Get overlays from the overlays endpoint
             const overlaysResponse = await fetch('/api/extensions/overlays/all');
+            console.log('Overlays API response:', overlaysResponse.status);
             if (overlaysResponse.ok) {
               const overlaysData = await overlaysResponse.json();
+              console.log('All overlays:', overlaysData.overlays?.length, 'items');
+              console.log('Looking for extension_id:', extensionId);
               const overlay = overlaysData.overlays?.find(o => o._extension_id === extensionId);
+              console.log('Found overlay:', overlay ? 'YES' : 'NO');
               if (overlay?.content) {
                 const wrapper = document.createElement('div');
                 wrapper.id = existingId;
+                wrapper.className = 'face-overlay-active';
                 wrapper.innerHTML = overlay.content;
                 container.appendChild(wrapper);
                 loadedOverlays[existingId] = true;
-                console.log('Overlay shown:', existingId);
+                console.log('Overlay inserted into DOM:', existingId);
+                console.log('Container children count:', container.children.length);
+              } else {
+                console.warn('Overlay has no content');
               }
             }
+          } else {
+            console.log('No overlays for this extension');
           }
         }
       } catch (e) {
-        console.warn('Could not load overlay:', e);
+        console.error('Could not load overlay:', e);
       }
     }
 
