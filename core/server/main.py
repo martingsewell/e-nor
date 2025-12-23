@@ -100,6 +100,15 @@ async def admin_dashboard():
     return HTMLResponse("<h1>Admin Dashboard</h1><p>Coming soon...</p>")
 
 
+@app.get("/controller")
+async def controller_page():
+    """Serve the mobile controller UI"""
+    controller_file = CORE_WEB_DIR / "controller.html"
+    if controller_file.exists():
+        return FileResponse(controller_file)
+    return HTMLResponse("<h1>Controller</h1><p>Not found</p>")
+
+
 @app.get("/health")
 async def health():
     """Health check endpoint"""
@@ -186,6 +195,13 @@ async def handle_message(data: dict, sender: WebSocket):
     elif msg_type == "action":
         # Broadcast action events (for action overlay display)
         await broadcast({"type": "action", "action": data.get("action", {})})
+
+    elif msg_type == "speak":
+        # Broadcast speak command to all clients (for TTS on face UI)
+        text = data.get("text", "")
+        if text:
+            await broadcast({"type": "speak", "text": text})
+            print(f"Speak: {text}")
 
 
 async def broadcast(message: dict):

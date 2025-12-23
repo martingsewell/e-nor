@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>E-NOR Controller</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid #333;
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    #status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4444;
+    }
+
+    #status-dot.connected {
+      background: #00ff00;
+    }
+
+    #title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #00ffff;
+    }
+
+    #speed-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    #speed-slider {
+      width: 80px;
+      accent-color: #00ffff;
+    }
+
+    /* Main controller area */
+    #controller {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    /* Joystick area */
+    #joystick-container {
+      width: 180px;
+      height: 180px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+      border: 3px solid #00ffff;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #joystick {
+      width: 70px;
+      height: 70px;
+      background: radial-gradient(circle at 30% 30%, #00ffff, #0088aa);
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 4px 15px rgba(0,255,255,0.4);
+      transition: transform 0.05s ease-out;
+    }
+
+    #joystick.active {
+      background: radial-gradient(circle at 30% 30%, #00ff88, #00aa66);
+      box-shadow: 0 4px 20px rgba(0,255,136,0.6);
+    }
+
+    /* Center section - emotions & stop */
+    #center-section {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+
+    #current-direction {
+      font-size: 24px;
+      font-weight: bold;
+      color: #00ffff;
+      text-transform: uppercase;
+      min-height: 30px;
+    }
+
+    #stop-btn {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #ff4444, #cc0000);
+      border: 4px solid #ff6666;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(255,0,0,0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #stop-btn:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 10px rgba(255,0,0,0.4);
+    }
+
+    /* Emotion grid */
+    #emotion-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .emotion-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      border: 2px solid #444;
+      background: rgba(255,255,255,0.1);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .emotion-btn:active {
+      transform: scale(0.9);
+      border-color: #00ffff;
+    }
+
+    /* Action buttons (right side) */
+    #action-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .action-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      border: 3px solid;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .action-btn .icon {
+      font-size: 22px;
+    }
+
+    .action-btn .label {
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    .action-btn:active {
+      transform: scale(0.9);
+    }
+
+    #btn-y {
+      background: linear-gradient(145deg, #ffcc00, #cc9900);
+      border-color: #ffdd44;
+      color: #000;
+    }
+
+    #btn-x {
+      background: linear-gradient(145deg, #0088ff, #0055cc);
+      border-color: #44aaff;
+      color: #fff;
+    }
+
+    #btn-b {
+      background: linear-gradient(145deg, #ff4444, #cc0000);
+      border-color: #ff6666;
+      color: #fff;
+    }
+
+    #btn-a {
+      background: linear-gradient(145deg, #00cc44, #008833);
+      border-color: #44ff66;
+      color: #fff;
+    }
+
+    /* D-Pad alternative (shown on toggle) */
+    #dpad-container {
+      display: none;
+      width: 180px;
+      height: 180px;
+      position: relative;
+    }
+
+    #dpad-container.visible {
+      display: block;
+    }
+
+    #joystick-container.hidden {
+      display: none;
+    }
+
+    .dpad-btn {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: rgba(0,255,255,0.2);
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      color: #00ffff;
+    }
+
+    .dpad-btn:active {
+      background: rgba(0,255,255,0.5);
+    }
+
+    #dpad-up { top: 0; left: 50%; transform: translateX(-50%); }
+    #dpad-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+    #dpad-left { left: 0; top: 50%; transform: translateY(-50%); }
+    #dpad-right { right: 0; top: 50%; transform: translateY(-50%); }
+
+    /* Toggle control type */
+    #control-toggle {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #444;
+      border-radius: 20px;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #control-toggle:active {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Fullscreen button */
+    #fullscreen-btn {
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Landscape prompt */
+    #rotate-prompt {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 1000;
+    }
+
+    #rotate-prompt .icon {
+      font-size: 60px;
+      animation: rotate-hint 2s ease-in-out infinite;
+    }
+
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+
+    @media (orientation: portrait) {
+      #rotate-prompt {
+        display: flex;
+      }
+    }
+
+    /* Quick actions bar */
+    #quick-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid #333;
+    }
+
+    .quick-btn {
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-btn:active {
+      background: rgba(255,255,255,0.2);
+      border-color: #00ffff;
+    }
+
+    .quick-btn .icon {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Rotate prompt for portrait mode -->
+  <div id="rotate-prompt">
+    <div class="icon">📱</div>
+    <div>Rotate your phone to landscape mode</div>
+  </div>
+
+  <!-- Header -->
+  <div id="header">
+    <div id="status">
+      <div id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+    <div id="title">E-NOR Controller</div>
+    <div id="speed-control">
+      <span>Speed:</span>
+      <input type="range" id="speed-slider" min="30" max="100" value="70">
+      <span id="speed-value">70%</span>
+      <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
+    </div>
+  </div>
+
+  <!-- Main controller -->
+  <div id="controller">
+    <!-- Left: Joystick or D-Pad -->
+    <div id="joystick-container">
+      <div id="joystick"></div>
+    </div>
+    <div id="dpad-container">
+      <button class="dpad-btn" id="dpad-up">▲</button>
+      <button class="dpad-btn" id="dpad-down">▼</button>
+      <button class="dpad-btn" id="dpad-left">◄</button>
+      <button class="dpad-btn" id="dpad-right">►</button>
+    </div>
+
+    <!-- Center: Stop button & current state -->
+    <div id="center-section">
+      <div id="current-direction">-</div>
+      <button id="stop-btn" ontouchstart="sendStop()" onclick="sendStop()">STOP</button>
+      <div id="emotion-grid">
+        <button class="emotion-btn" onclick="setEmotion('happy')">😊</button>
+        <button class="emotion-btn" onclick="setEmotion('surprised')">😮</button>
+        <button class="emotion-btn" onclick="setEmotion('sad')">😢</button>
+        <button class="emotion-btn" onclick="setEmotion('angry')">😠</button>
+      </div>
+    </div>
+
+    <!-- Right: Action buttons -->
+    <div id="action-section">
+      <div class="action-row">
+        <button class="action-btn" id="btn-y" ontouchstart="actionY()" onclick="actionY()">
+          <span class="icon">💬</span>
+          <span class="label">SPEAK</span>
+        </button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn" id="btn-x" ontouchstart="actionX()" onclick="actionX()">
+          <span class="icon">🔊</span>
+          <span class="label">SOUND</span>
+        </button>
+        <button class="action-btn" id="btn-b" ontouchstart="actionB()" onclick="actionB()">
+          <span class="icon">🎭</span>
+          <span class="label">MODE</span>
+        </button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn" id="btn-a" ontouchstart="actionA()" onclick="actionA()">
+          <span class="icon">🎉</span>
+          <span class="label">DISCO</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick actions bar -->
+  <div id="quick-actions">
+    <button class="quick-btn" onclick="speak('Hello!')">
+      <span class="icon">👋</span> Hello
+    </button>
+    <button class="quick-btn" onclick="speak('I love you!')">
+      <span class="icon">❤️</span> Love
+    </button>
+    <button class="quick-btn" onclick="speak('Let\\'s play!')">
+      <span class="icon">🎮</span> Play
+    </button>
+    <button class="quick-btn" onclick="speak('That\\'s funny!')">
+      <span class="icon">😂</span> Funny
+    </button>
+    <button class="quick-btn" onclick="triggerAction('honk')">
+      <span class="icon">📯</span> Honk
+    </button>
+  </div>
+
+  <!-- Control type toggle -->
+  <button id="control-toggle" onclick="toggleControlType()">Switch to D-Pad</button>
+
+  <script>
+    // WebSocket connection
+    let ws = null;
+    let connected = false;
+    let speed = 0.7;
+    let currentDirection = null;
+    let useDpad = false;
+
+    // DOM elements
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystick = document.getElementById('joystick');
+    const dpadContainer = document.getElementById('dpad-container');
+    const directionDisplay = document.getElementById('current-direction');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue = document.getElementById('speed-value');
+    const controlToggle = document.getElementById('control-toggle');
+
+    // Joystick state
+    let joystickActive = false;
+    let joystickCenter = { x: 0, y: 0 };
+    const joystickRadius = 55; // Max movement radius
+
+    // Connect WebSocket
+    function connect() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        connected = true;
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+        console.log('Connected to E-NOR');
+      };
+
+      ws.onclose = () => {
+        connected = false;
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+        console.log('Disconnected - reconnecting...');
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          // Handle any responses if needed
+        } catch (e) {}
+      };
+    }
+
+    function send(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
+
+    // Motor control
+    function sendMotorCommand(direction, motorSpeed = null) {
+      const s = motorSpeed !== null ? motorSpeed : speed;
+      currentDirection = direction;
+      directionDisplay.textContent = direction || '-';
+
+      fetch(`/api/motor/${direction}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speed: s })
+      }).catch(err => console.error('Motor command failed:', err));
+    }
+
+    function sendStop() {
+      currentDirection = null;
+      directionDisplay.textContent = '-';
+      fetch('/api/motor/stop', { method: 'POST' })
+        .catch(err => console.error('Stop failed:', err));
+
+      // Haptic feedback
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }
+
+    // Joystick handling
+    function initJoystick() {
+      const rect = joystickContainer.getBoundingClientRect();
+      joystickCenter = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+
+      joystickContainer.addEventListener('touchstart', handleJoystickStart, { passive: false });
+      joystickContainer.addEventListener('touchmove', handleJoystickMove, { passive: false });
+      joystickContainer.addEventListener('touchend', handleJoystickEnd, { passive: false });
+      joystickContainer.addEventListener('touchcancel', handleJoystickEnd, { passive: false });
+    }
+
+    function handleJoystickStart(e) {
+      e.preventDefault();
+      joystickActive = true;
+      joystick.classList.add('active');
+
+      // Recalculate center in case of scroll/resize
+      const rect = joystickContainer.getBoundingClientRect();
+      joystickCenter = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+
+      handleJoystickMove(e);
+    }
+
+    function handleJoystickMove(e) {
+      if (!joystickActive) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      let dx = touch.clientX - joystickCenter.x;
+      let dy = touch.clientY - joystickCenter.y;
+
+      // Clamp to radius
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > joystickRadius) {
+        dx = (dx / distance) * joystickRadius;
+        dy = (dy / distance) * joystickRadius;
+      }
+
+      // Update joystick position
+      joystick.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      // Calculate direction and speed
+      const normalizedDistance = Math.min(distance / joystickRadius, 1);
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      // Dead zone
+      if (normalizedDistance < 0.2) {
+        if (currentDirection !== null) {
+          sendStop();
+        }
+        return;
+      }
+
+      // Determine direction based on angle
+      const motorSpeed = speed * normalizedDistance;
+
+      if (angle >= -45 && angle < 45) {
+        // Right
+        if (currentDirection !== 'right') sendMotorCommand('right', motorSpeed);
+      } else if (angle >= 45 && angle < 135) {
+        // Down (backward)
+        if (currentDirection !== 'backward') sendMotorCommand('backward', motorSpeed);
+      } else if (angle >= -135 && angle < -45) {
+        // Up (forward)
+        if (currentDirection !== 'forward') sendMotorCommand('forward', motorSpeed);
+      } else {
+        // Left
+        if (currentDirection !== 'left') sendMotorCommand('left', motorSpeed);
+      }
+    }
+
+    function handleJoystickEnd(e) {
+      e.preventDefault();
+      joystickActive = false;
+      joystick.classList.remove('active');
+      joystick.style.transform = 'translate(0, 0)';
+      sendStop();
+    }
+
+    // D-Pad handling
+    function initDpad() {
+      ['up', 'down', 'left', 'right'].forEach(dir => {
+        const btn = document.getElementById(`dpad-${dir}`);
+        const motorDir = dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir;
+
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sendMotorCommand(motorDir);
+          if (navigator.vibrate) navigator.vibrate(30);
+        }, { passive: false });
+
+        btn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          sendStop();
+        }, { passive: false });
+
+        btn.addEventListener('touchcancel', (e) => {
+          e.preventDefault();
+          sendStop();
+        }, { passive: false });
+      });
+    }
+
+    // Toggle between joystick and d-pad
+    function toggleControlType() {
+      useDpad = !useDpad;
+      if (useDpad) {
+        joystickContainer.classList.add('hidden');
+        dpadContainer.classList.add('visible');
+        controlToggle.textContent = 'Switch to Joystick';
+      } else {
+        joystickContainer.classList.remove('hidden');
+        dpadContainer.classList.remove('visible');
+        controlToggle.textContent = 'Switch to D-Pad';
+      }
+    }
+
+    // Speed control
+    speedSlider.addEventListener('input', () => {
+      speed = speedSlider.value / 100;
+      speedValue.textContent = `${speedSlider.value}%`;
+    });
+
+    // Emotion control
+    function setEmotion(emotion) {
+      send({ type: 'emotion', emotion: emotion });
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // Action buttons
+    function actionA() {
+      // Disco mode toggle
+      send({ type: 'disco', enabled: true });
+      setTimeout(() => send({ type: 'disco', enabled: false }), 3000);
+      if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    }
+
+    function actionB() {
+      // Cycle through modes or trigger cat mode
+      // For now, trigger a fun mode
+      speak("Meow! I'm a cat now!");
+      setEmotion('playful');
+    }
+
+    function actionX() {
+      // Play a sound
+      triggerAction('beep');
+    }
+
+    function actionY() {
+      // Random greeting
+      const greetings = [
+        "Hello there!",
+        "Hey, what's up?",
+        "Hi friend!",
+        "Greetings, human!",
+        "Yo!"
+      ];
+      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+      speak(greeting);
+    }
+
+    // Speak function
+    function speak(text) {
+      send({ type: 'speak', text: text });
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // Trigger action (for sounds, etc.)
+    function triggerAction(action) {
+      send({ type: 'action', action: { name: action } });
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // Fullscreen
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log('Fullscreen not available');
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Prevent default touch behaviors
+    document.addEventListener('touchmove', (e) => {
+      if (e.target.closest('#controller')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Initialize
+    window.addEventListener('load', () => {
+      connect();
+      initJoystick();
+      initDpad();
+
+      // Recalculate joystick center on resize/orientation change
+      window.addEventListener('resize', () => {
+        const rect = joystickContainer.getBoundingClientRect();
+        joystickCenter = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+      });
+    });
+  </script>
+</body>
+</html>
