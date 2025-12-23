@@ -68,8 +68,23 @@ def add_extension_request(title: str, description: str, issue_number: int = None
     return new_request
 
 
+def extension_exists(title: str) -> bool:
+    """Check if an extension actually exists in the extensions folder"""
+    extensions_dir = Path(__file__).parent.parent.parent / "extensions"
+    sanitized_name = _sanitize_extension_name(title)
+
+    # Check if extension folder exists
+    extension_path = extensions_dir / sanitized_name
+    if extension_path.exists() and extension_path.is_dir():
+        # Check if it has a manifest.json (meaning it was actually built)
+        manifest_path = extension_path / "manifest.json"
+        return manifest_path.exists()
+
+    return False
+
+
 def find_similar_request(title: str, description: str) -> Optional[Dict]:
-    """Check if a similar extension request already exists"""
+    """Check if a similar extension request already exists AND was actually built"""
     requests = load_extension_requests()
     title_lower = title.lower().strip()
 
@@ -77,7 +92,13 @@ def find_similar_request(title: str, description: str) -> Optional[Dict]:
         if req.get("status") in ["pending", "in_progress"]:
             existing_title = req.get("title", "").lower().strip()
             if title_lower == existing_title or title_lower in existing_title or existing_title in title_lower:
-                return req
+                # Only treat as duplicate if the extension was actually created
+                if extension_exists(req.get("title", "")):
+                    return req
+                else:
+                    # Extension was requested but never built - allow re-request
+                    print(f"[ExtensionRequest] Previous request '{existing_title}' was never built, allowing re-request")
+                    return None
 
     return None
 
