@@ -319,6 +319,110 @@ async def force_reset_to_remote():
         }
 
 
+@router.post("/push-logs")
+async def push_logs():
+    """Push logs to the 'logs' branch for remote debugging"""
+    import os
+    from datetime import datetime
+
+    logs_branch = "logs"
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename = f"enor_{timestamp}.log"
+
+    # Collect logs
+    log_content = f"=== E-NOR Service Logs ===\nCollected at: {datetime.now().isoformat()}\n\n"
+
+    # Get journalctl logs
+    try:
+        result = subprocess.run(
+            ["journalctl", "-u", "enor", "--no-pager", "-n", "1000"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        log_content += result.stdout if result.returncode == 0 else "No journalctl logs available\n"
+    except Exception as e:
+        log_content += f"Failed to get journalctl logs: {e}\n"
+
+    # Add system info
+    log_content += "\n=== System Info ===\n"
+    try:
+        import socket
+        log_content += f"Hostname: {socket.gethostname()}\n"
+
+        uptime_result = subprocess.run(["uptime"], capture_output=True, text=True, timeout=5)
+        log_content += f"Uptime: {uptime_result.stdout.strip()}\n"
+
+        free_result = subprocess.run(["free", "-h"], capture_output=True, text=True, timeout=5)
+        log_content += f"Memory:\n{free_result.stdout}\n"
+    except Exception as e:
+        log_content += f"Failed to get system info: {e}\n"
+
+    # Save current branch
+    success, current_branch = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+    if not success:
+        return {"success": False, "error": f"Failed to get current branch: {current_branch}"}
+
+    # Fetch logs branch
+    run_git_command(["fetch", "origin", logs_branch], timeout=60)
+
+    # Check if logs branch exists remotely
+    success, _ = run_git_command(["ls-remote", "--heads", "origin", logs_branch])
+    branch_exists = success and logs_branch in _
+
+    try:
+        if branch_exists:
+            # Checkout existing logs branch
+            run_git_command(["checkout", logs_branch])
+            run_git_command(["pull", "origin", logs_branch, "--rebase"])
+        else:
+            # Create orphan branch
+            run_git_command(["checkout", "--orphan", logs_branch])
+            run_git_command(["rm", "-rf", "."])
+
+            # Create README
+            readme_path = PROJECT_ROOT / "README.md"
+            readme_path.write_text("# E-NOR Debug Logs\n\nThis branch contains debug logs pushed from the Pi.\nIt is excluded from auto-merge to main.\n")
+            run_git_command(["add", "README.md"])
+            run_git_command(["commit", "-m", "Initialize logs branch"])
+
+        # Create logs directory
+        logs_dir = PROJECT_ROOT / "logs"
+        logs_dir.mkdir(exist_ok=True)
+
+        # Write log file
+        log_path = logs_dir / log_filename
+        log_path.write_text(log_content)
+
+        # Clean up old logs (keep last 20)
+        log_files = sorted(logs_dir.glob("enor_*.log"), reverse=True)
+        for old_log in log_files[20:]:
+            old_log.unlink()
+
+        # Commit and push
+        run_git_command(["add", "logs/"])
+        success, commit_output = run_git_command(["commit", "-m", f"Log snapshot: {timestamp}"])
+
+        if not success and "nothing to commit" in commit_output:
+            return {"success": True, "message": "No new logs to commit", "log_file": None}
+
+        success, push_output = run_git_command(["push", "-u", "origin", logs_branch], timeout=60)
+
+        if not success:
+            return {"success": False, "error": f"Push failed: {push_output}"}
+
+        return {
+            "success": True,
+            "message": "Logs pushed successfully",
+            "log_file": log_filename,
+            "branch": logs_branch
+        }
+
+    finally:
+        # Always return to original branch
+        run_git_command(["checkout", current_branch])
+
+
 @router.get("/log")
 async def get_recent_commits(count: int = 10):
     """Get recent commit log"""

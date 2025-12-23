@@ -1017,6 +1017,7 @@
         <button class="btn-primary" onclick="forcePull()" id="btn-pull">Pull Latest</button>
         <button class="btn-warning btn-small" onclick="resetConflicts()" id="btn-reset-conflicts" style="display:none">Reset Conflicts</button>
         <button class="btn-danger btn-small" onclick="forceReset()" id="btn-force-reset">Force Reset to Remote</button>
+        <button class="btn-secondary btn-small" onclick="pushLogs()" id="btn-push-logs" title="Push logs to GitHub for remote debugging">Push Debug Logs</button>
       </div>
 
       <p class="hint" style="margin-top: 10px;">Last checked: <span id="deploy-last-check">never</span></p>
@@ -1830,6 +1831,33 @@
       }
 
       await loadDeployStatus();
+    }
+
+    async function pushLogs() {
+      const btn = document.getElementById('btn-push-logs');
+      const originalText = btn.textContent;
+      btn.textContent = 'Pushing...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/deployment/push-logs', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.log_file) {
+            showToast(`Logs pushed: ${result.log_file}`, 'success');
+          } else {
+            showToast(result.message || 'Logs pushed', 'success');
+          }
+        } else {
+          showToast(result.error || 'Push failed', 'error');
+        }
+      } catch (e) {
+        showToast('Push failed: ' + e.message, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
     }
 
     // Initialize
