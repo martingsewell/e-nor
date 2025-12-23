@@ -2257,10 +2257,14 @@
         'update_memory': { icon: '📝', label: 'Update', getText: (a) => `Updating "${a.topic}": ${a.new_fact}` },
         'forget': { icon: '🗑️', label: 'Forget', getText: (a) => `Forgetting: "${a.topic}"` },
         'end_conversation': { icon: '👋', label: 'Ending', getText: () => 'Ending conversation' },
-        'code_request_proposal': { icon: '💡', label: 'Proposal', getText: (a) => `${a.title}` },
-        'code_request_confirmed': { icon: '🔧', label: 'Code Request', getText: (a) => `Creating: ${a.title}` },
+        'extension_proposal': { icon: '💡', label: 'Proposal', getText: (a) => `${a.title}` },
+        'extension_confirmed': { icon: '🔧', label: 'Creating Extension', getText: (a) => `Creating: ${a.title}` },
         'tell_joke': { icon: '😄', label: 'Joke', getText: (a) => `Telling a ${a.joke_type || 'random'} joke` },
-        'ui_issue_report': { icon: '📸', label: 'UI Issue', getText: (a) => `Reporting: ${a.title}` }
+        'ui_issue_report': { icon: '📸', label: 'UI Issue', getText: (a) => `Reporting: ${a.title}` },
+        'list_powers': { icon: '⚡', label: 'Powers', getText: () => 'Listing my powers...' },
+        'activate_mode': { icon: '🎭', label: 'Mode', getText: (a) => `${a.active ? 'Activating' : 'Deactivating'} ${a.mode_name}` },
+        'undo_power': { icon: '↩️', label: 'Undo', getText: (a) => `Undoing ${a.power_name}` },
+        'report_bug': { icon: '🐛', label: 'Bug Report', getText: (a) => `Reporting bug in ${a.power_name}` }
       };
 
       const info = actionInfo[action.type] || { icon: '⚡', label: 'Action', getText: () => action.type };
@@ -2294,10 +2298,14 @@
         'update_memory': { icon: '📝', label: 'Updating Memory', getText: (a) => a.new_fact ? `"${a.new_fact.length > 30 ? a.new_fact.substring(0, 30) + '...' : a.new_fact}"` : `Updating ${a.topic}` },
         'forget': { icon: '🗑️', label: 'Forgetting', getText: (a) => `"${a.topic}"` },
         'end_conversation': { icon: '👋', label: 'Goodbye!', getText: () => 'Going back to sleep' },
-        'code_request_proposal': { icon: '💡', label: 'Code Idea', getText: (a) => a.title || 'New feature idea' },
-        'code_request_confirmed': { icon: '🔧', label: 'Creating Request', getText: (a) => a.title || 'New code request' },
+        'extension_proposal': { icon: '💡', label: 'New Power Idea!', getText: (a) => a.title || 'New feature idea' },
+        'extension_confirmed': { icon: '🔧', label: 'Creating Power!', getText: (a) => a.title || 'New extension' },
         'tell_joke': { icon: '😄', label: 'Telling Joke', getText: (a) => `${a.joke_type || 'Random'} joke coming up!` },
-        'ui_issue_report': { icon: '📸', label: 'Reporting Bug', getText: (a) => a.title || 'UI issue report' }
+        'ui_issue_report': { icon: '📸', label: 'Reporting Bug', getText: (a) => a.title || 'UI issue report' },
+        'list_powers': { icon: '⚡', label: 'My Powers', getText: () => 'Checking my powers...' },
+        'activate_mode': { icon: '🎭', label: 'Mode Change', getText: (a) => `${a.active ? 'Activating' : 'Deactivating'} ${a.mode_name}` },
+        'undo_power': { icon: '↩️', label: 'Undo', getText: (a) => `Reverting ${a.power_name}` },
+        'report_bug': { icon: '🐛', label: 'Bug Report', getText: (a) => `Reporting: ${a.power_name}` }
       };
 
       const info = actionInfo[action.type] || { icon: '⚡', label: 'Processing', getText: () => action.type };
@@ -2366,7 +2374,20 @@
           applyEmotion(data.emotion);
           send({ type: 'emotion', emotion: data.emotion });
         }
-        
+
+        // Handle extension creation result
+        if (data.extension_request) {
+          if (data.extension_request.success) {
+            addMessage(`Created extension request #${data.extension_request.issue_number}! It will be ready soon.`, 'system');
+            console.log('Extension request created:', data.extension_request);
+          } else if (data.extension_request.duplicate) {
+            addMessage(data.extension_request.message || 'This was already requested!', 'system');
+          } else {
+            addMessage(`Couldn't create extension: ${data.extension_request.message}`, 'system');
+            console.error('Extension request failed:', data.extension_request);
+          }
+        }
+
         // Handle UI issue reports with automatic screenshot
         if (data.ui_issue && data.ui_issue.screenshot_requested) {
           console.log('UI issue reported, capturing screenshot automatically...');

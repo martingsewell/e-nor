@@ -334,12 +334,18 @@ def suggest_alternative(request: str) -> Optional[str]:
 
 def create_bug_report_issue(power_name: str, description: str) -> dict:
     """Create a GitHub issue for a bug report about an extension"""
+    from .config import load_config
+    from .secrets import get_secret, has_secret
+
     config = load_config()
     owner = config.get("github", {}).get("owner")
     repo = config.get("github", {}).get("repo")
 
     if not owner or not repo:
         return {"success": False, "message": "GitHub not configured"}
+
+    if not has_secret("GITHUB_TOKEN"):
+        return {"success": False, "message": "GitHub token not configured"}
 
     body = f"""## Bug Report
 
