@@ -34,21 +34,22 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 16px;
+      padding: 6px 12px;
       background: rgba(0,0,0,0.3);
       border-bottom: 1px solid #333;
+      flex-shrink: 0;
     }
 
     #status {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 14px;
+      gap: 6px;
+      font-size: 12px;
     }
 
     #status-dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #ff4444;
     }
@@ -58,7 +59,7 @@
     }
 
     #title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       color: #00ffff;
     }
@@ -66,12 +67,12 @@
     #speed-control {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 12px;
+      gap: 6px;
+      font-size: 11px;
     }
 
     #speed-slider {
-      width: 80px;
+      width: 60px;
       accent-color: #00ffff;
     }
 
@@ -81,14 +82,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
-      gap: 20px;
+      padding: 10px 15px;
+      gap: 10px;
+      min-height: 0;
     }
 
     /* Joystick area */
     #joystick-container {
-      width: 180px;
-      height: 180px;
+      width: 150px;
+      height: 150px;
       background: rgba(255,255,255,0.05);
       border-radius: 50%;
       border: 3px solid #00ffff;
@@ -96,16 +98,16 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      flex-shrink: 0;
     }
 
     #joystick {
-      width: 70px;
-      height: 70px;
+      width: 60px;
+      height: 60px;
       background: radial-gradient(circle at 30% 30%, #00ffff, #0088aa);
       border-radius: 50%;
       position: absolute;
       box-shadow: 0 4px 15px rgba(0,255,255,0.4);
-      transition: transform 0.05s ease-out;
     }
 
     #joystick.active {
@@ -117,26 +119,26 @@
     #center-section {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 8px;
       align-items: center;
     }
 
     #current-direction {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: bold;
       color: #00ffff;
       text-transform: uppercase;
-      min-height: 30px;
+      min-height: 24px;
     }
 
     #stop-btn {
-      width: 100px;
-      height: 100px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
       background: linear-gradient(145deg, #ff4444, #cc0000);
       border: 4px solid #ff6666;
       color: white;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       box-shadow: 0 6px 20px rgba(255,0,0,0.4);
@@ -153,17 +155,17 @@
     /* Emotion grid */
     #emotion-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
 
     .emotion-btn {
-      width: 50px;
-      height: 50px;
-      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
       border: 2px solid #444;
       background: rgba(255,255,255,0.1);
-      font-size: 24px;
+      font-size: 20px;
       cursor: pointer;
       display: flex;
       justify-content: center;
@@ -179,36 +181,36 @@
     #action-section {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .action-row {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       justify-content: center;
     }
 
     .action-btn {
-      width: 70px;
-      height: 70px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
       border: 3px solid;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: bold;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 2px;
+      gap: 1px;
     }
 
     .action-btn .icon {
-      font-size: 22px;
+      font-size: 18px;
     }
 
     .action-btn .label {
-      font-size: 10px;
+      font-size: 8px;
       opacity: 0.8;
     }
 
@@ -240,12 +242,22 @@
       color: #fff;
     }
 
+    #btn-a.dancing {
+      animation: pulse 0.3s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
     /* D-Pad alternative (shown on toggle) */
     #dpad-container {
       display: none;
-      width: 180px;
-      height: 180px;
+      width: 150px;
+      height: 150px;
       position: relative;
+      flex-shrink: 0;
     }
 
     #dpad-container.visible {
@@ -258,15 +270,15 @@
 
     .dpad-btn {
       position: absolute;
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
       background: rgba(0,255,255,0.2);
       border: 2px solid #00ffff;
       border-radius: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: 28px;
+      font-size: 24px;
       color: #00ffff;
     }
 
@@ -282,30 +294,19 @@
     /* Toggle control type */
     #control-toggle {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      padding: 8px 12px;
+      bottom: 8px;
+      left: 8px;
+      padding: 6px 10px;
       background: rgba(255,255,255,0.1);
       border: 1px solid #444;
       border-radius: 20px;
       color: #888;
-      font-size: 12px;
+      font-size: 10px;
       cursor: pointer;
     }
 
     #control-toggle:active {
       background: rgba(255,255,255,0.2);
-    }
-
-    /* Fullscreen button */
-    #fullscreen-btn {
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: #888;
-      font-size: 12px;
-      cursor: pointer;
     }
 
     /* Landscape prompt */
@@ -341,23 +342,26 @@
     #quick-actions {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      padding: 10px;
+      gap: 6px;
+      padding: 6px 10px;
       background: rgba(0,0,0,0.3);
       border-top: 1px solid #333;
+      flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .quick-btn {
-      padding: 10px 16px;
+      padding: 6px 10px;
       background: rgba(255,255,255,0.1);
       border: 1px solid #444;
-      border-radius: 8px;
+      border-radius: 6px;
       color: #fff;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
+      white-space: nowrap;
     }
 
     .quick-btn:active {
@@ -366,11 +370,52 @@
     }
 
     .quick-btn .icon {
-      font-size: 16px;
+      font-size: 14px;
+    }
+
+    /* Tap to start overlay */
+    #tap-to-start {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 999;
+      cursor: pointer;
+    }
+
+    #tap-to-start.hidden {
+      display: none;
+    }
+
+    #tap-to-start .title {
+      font-size: 32px;
+      color: #00ffff;
+      font-weight: bold;
+    }
+
+    #tap-to-start .subtitle {
+      font-size: 18px;
+      color: #888;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
   </style>
 </head>
 <body>
+  <!-- Tap to start (auto fullscreen) -->
+  <div id="tap-to-start" onclick="startController()">
+    <div class="title">E-NOR Controller</div>
+    <div class="subtitle">Tap anywhere to start</div>
+  </div>
+
   <!-- Rotate prompt for portrait mode -->
   <div id="rotate-prompt">
     <div class="icon">📱</div>
@@ -383,12 +428,11 @@
       <div id="status-dot"></div>
       <span id="status-text">Connecting...</span>
     </div>
-    <div id="title">E-NOR Controller</div>
+    <div id="title">E-NOR</div>
     <div id="speed-control">
       <span>Speed:</span>
       <input type="range" id="speed-slider" min="30" max="100" value="70">
       <span id="speed-value">70%</span>
-      <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
     </div>
   </div>
 
@@ -427,8 +471,8 @@
       </div>
       <div class="action-row">
         <button class="action-btn" id="btn-x" ontouchstart="actionX()" onclick="actionX()">
-          <span class="icon">🔊</span>
-          <span class="label">SOUND</span>
+          <span class="icon">😂</span>
+          <span class="label">JOKE</span>
         </button>
         <button class="action-btn" id="btn-b" ontouchstart="actionB()" onclick="actionB()">
           <span class="icon">🎭</span>
@@ -464,7 +508,7 @@
   </div>
 
   <!-- Control type toggle -->
-  <button id="control-toggle" onclick="toggleControlType()">Switch to D-Pad</button>
+  <button id="control-toggle" onclick="toggleControlType()">D-Pad</button>
 
   <script>
     // WebSocket connection
@@ -473,6 +517,9 @@
     let speed = 0.7;
     let currentDirection = null;
     let useDpad = false;
+    let isDancing = false;
+    let danceInterval = null;
+    let wakeLock = null;
 
     // DOM elements
     const statusDot = document.getElementById('status-dot');
@@ -484,11 +531,55 @@
     const speedSlider = document.getElementById('speed-slider');
     const speedValue = document.getElementById('speed-value');
     const controlToggle = document.getElementById('control-toggle');
+    const tapToStart = document.getElementById('tap-to-start');
+    const btnA = document.getElementById('btn-a');
 
     // Joystick state
     let joystickActive = false;
     let joystickCenter = { x: 0, y: 0 };
-    const joystickRadius = 55; // Max movement radius
+    const joystickRadius = 45; // Max movement radius
+
+    // Start controller (fullscreen + init)
+    async function startController() {
+      tapToStart.classList.add('hidden');
+
+      // Go fullscreen
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log('Fullscreen not available:', err);
+        });
+      }
+
+      // Keep screen on with Wake Lock API
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Wake lock active - screen will stay on');
+        }
+      } catch (err) {
+        console.log('Wake lock not available:', err);
+      }
+
+      // Initialize after a short delay to let fullscreen settle
+      setTimeout(() => {
+        initJoystick();
+        initDpad();
+      }, 100);
+    }
+
+    // Re-acquire wake lock if page becomes visible again
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && !wakeLock) {
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake lock re-acquired');
+          }
+        } catch (err) {
+          console.log('Could not re-acquire wake lock:', err);
+        }
+      }
+    });
 
     // Connect WebSocket
     function connect() {
@@ -604,29 +695,32 @@
       const normalizedDistance = Math.min(distance / joystickRadius, 1);
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
-      // Dead zone
-      if (normalizedDistance < 0.2) {
+      // Very small dead zone for better sensitivity
+      if (normalizedDistance < 0.08) {
         if (currentDirection !== null) {
           sendStop();
         }
         return;
       }
 
-      // Determine direction based on angle
-      const motorSpeed = speed * normalizedDistance;
+      // Calculate motor speed - use full speed even at smaller distances
+      const motorSpeed = speed * Math.max(0.5, normalizedDistance);
 
+      // Determine direction based on angle
+      let newDirection;
       if (angle >= -45 && angle < 45) {
-        // Right
-        if (currentDirection !== 'right') sendMotorCommand('right', motorSpeed);
+        newDirection = 'right';
       } else if (angle >= 45 && angle < 135) {
-        // Down (backward)
-        if (currentDirection !== 'backward') sendMotorCommand('backward', motorSpeed);
+        newDirection = 'backward';
       } else if (angle >= -135 && angle < -45) {
-        // Up (forward)
-        if (currentDirection !== 'forward') sendMotorCommand('forward', motorSpeed);
+        newDirection = 'forward';
       } else {
-        // Left
-        if (currentDirection !== 'left') sendMotorCommand('left', motorSpeed);
+        newDirection = 'left';
+      }
+
+      // Always send command to ensure motor responds
+      if (currentDirection !== newDirection) {
+        sendMotorCommand(newDirection, motorSpeed);
       }
     }
 
@@ -668,12 +762,20 @@
       if (useDpad) {
         joystickContainer.classList.add('hidden');
         dpadContainer.classList.add('visible');
-        controlToggle.textContent = 'Switch to Joystick';
+        controlToggle.textContent = 'Joystick';
       } else {
         joystickContainer.classList.remove('hidden');
         dpadContainer.classList.remove('visible');
-        controlToggle.textContent = 'Switch to D-Pad';
+        controlToggle.textContent = 'D-Pad';
       }
+      // Recalculate joystick center after toggle
+      setTimeout(() => {
+        const rect = joystickContainer.getBoundingClientRect();
+        joystickCenter = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+      }, 100);
     }
 
     // Speed control
@@ -688,24 +790,96 @@
       if (navigator.vibrate) navigator.vibrate(30);
     }
 
+    // Disco dance routine
+    function startDancing() {
+      if (isDancing) return;
+      isDancing = true;
+      btnA.classList.add('dancing');
+
+      send({ type: 'disco', enabled: true });
+
+      let danceStep = 0;
+      const danceSpeed = 0.6;
+
+      function doDanceMove() {
+        if (!isDancing) return;
+
+        // Randomize timing a bit (200-400ms)
+        const nextDelay = 200 + Math.random() * 200;
+
+        // Randomize direction (mostly left/right, occasional forward wiggle)
+        const rand = Math.random();
+        let direction;
+        if (rand < 0.4) {
+          direction = 'left';
+        } else if (rand < 0.8) {
+          direction = 'right';
+        } else if (rand < 0.9) {
+          direction = 'forward';
+        } else {
+          direction = 'backward';
+        }
+
+        // Randomize speed a bit
+        const moveSpeed = danceSpeed + (Math.random() * 0.3 - 0.15);
+
+        sendMotorCommand(direction, moveSpeed);
+        directionDisplay.textContent = '🕺 ' + direction;
+
+        danceStep++;
+        danceInterval = setTimeout(doDanceMove, nextDelay);
+      }
+
+      doDanceMove();
+
+      // Stop after 5 seconds
+      setTimeout(stopDancing, 5000);
+    }
+
+    function stopDancing() {
+      isDancing = false;
+      btnA.classList.remove('dancing');
+      if (danceInterval) {
+        clearTimeout(danceInterval);
+        danceInterval = null;
+      }
+      sendStop();
+      send({ type: 'disco', enabled: false });
+    }
+
     // Action buttons
     function actionA() {
-      // Disco mode toggle
-      send({ type: 'disco', enabled: true });
-      setTimeout(() => send({ type: 'disco', enabled: false }), 3000);
+      if (isDancing) {
+        stopDancing();
+      } else {
+        startDancing();
+      }
       if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
     }
 
     function actionB() {
       // Cycle through modes or trigger cat mode
-      // For now, trigger a fun mode
       speak("Meow! I'm a cat now!");
       setEmotion('playful');
     }
 
     function actionX() {
-      // Play a sound
-      triggerAction('beep');
+      // Tell a joke
+      const jokes = [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "What do you call a fake noodle? An impasta!",
+        "Why did the scarecrow win an award? He was outstanding in his field!",
+        "What do you call a bear with no teeth? A gummy bear!",
+        "Why don't eggs tell jokes? They'd crack each other up!",
+        "What do you call a dinosaur that crashes their car? Tyrannosaurus Wrecks!",
+        "Why did the bicycle fall over? Because it was two tired!",
+        "What do you call a fish without eyes? A fsh!",
+        "Why can't you give Elsa a balloon? Because she'll let it go!",
+        "What do you call a sleeping dinosaur? A dino-snore!"
+      ];
+      const joke = jokes[Math.floor(Math.random() * jokes.length)];
+      speak(joke);
+      setEmotion('happy');
     }
 
     function actionY() {
@@ -754,16 +928,16 @@
     // Initialize
     window.addEventListener('load', () => {
       connect();
-      initJoystick();
-      initDpad();
 
       // Recalculate joystick center on resize/orientation change
       window.addEventListener('resize', () => {
-        const rect = joystickContainer.getBoundingClientRect();
-        joystickCenter = {
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
-        };
+        setTimeout(() => {
+          const rect = joystickContainer.getBoundingClientRect();
+          joystickCenter = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          };
+        }, 100);
       });
     });
   </script>
