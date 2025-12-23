@@ -1986,6 +1986,31 @@
         <span class="toggle-slider"></span>
       </label>
     </div>
+
+    <!-- Controller Section -->
+    <div class="secret-item" id="controller-section">
+      <h3>Game Controller</h3>
+      <p class="hint">Connect a wireless gamepad to control E-NOR's movement</p>
+      <div id="controller-status" style="margin: 10px 0; padding: 10px; background: #1a1a2e; border-radius: 8px;">
+        <span id="controller-status-text">No controller detected</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button onclick="scanControllers()" id="scan-controllers-btn" style="padding: 10px 15px; border: none; border-radius: 8px; background: #00aaff; color: #fff; cursor: pointer; font-weight: bold;">
+          Scan for Controllers
+        </button>
+        <button onclick="startController()" id="start-controller-btn" style="padding: 10px 15px; border: none; border-radius: 8px; background: #00ff00; color: #000; cursor: pointer; font-weight: bold; display: none;">
+          Connect
+        </button>
+        <button onclick="stopController()" id="stop-controller-btn" style="padding: 10px 15px; border: none; border-radius: 8px; background: #ff4444; color: #fff; cursor: pointer; font-weight: bold; display: none;">
+          Disconnect
+        </button>
+      </div>
+      <div id="controller-list" style="margin-top: 10px;"></div>
+      <div id="controller-input-display" style="margin-top: 10px; display: none; padding: 10px; background: #1a1a2e; border-radius: 8px; font-family: monospace; font-size: 12px;">
+        <div>Input: <span id="last-input">-</span></div>
+        <div>Direction: <span id="last-direction">-</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- Extensions Modal -->
@@ -2334,6 +2359,9 @@
         } else if (msg.type === 'play_sound') {
           // Extension wants to play sound
           playExtensionSound(msg.path);
+        } else if (msg.type === 'controller_event' || msg.type === 'controller_input') {
+          // Controller input events
+          handleControllerEvent(msg);
         }
       };
     }
@@ -3306,6 +3334,148 @@
       } catch (error) {
         resultEl.textContent = 'Could not connect to E-NOR server';
         resultEl.className = 'error';
+      }
+    }
+
+    // ==================== Game Controller ====================
+    let controllerConnected = false;
+    let selectedControllerPath = null;
+
+    async function scanControllers() {
+      const statusText = document.getElementById('controller-status-text');
+      const scanBtn = document.getElementById('scan-controllers-btn');
+      const startBtn = document.getElementById('start-controller-btn');
+      const controllerList = document.getElementById('controller-list');
+
+      statusText.textContent = 'Scanning for controllers...';
+      scanBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/controller/scan');
+        const data = await response.json();
+
+        if (data.success && data.controllers && data.controllers.length > 0) {
+          statusText.textContent = `Found ${data.controllers.length} controller(s)`;
+          statusText.style.color = '#00ff00';
+
+          // Show controller list
+          let listHtml = '';
+          data.controllers.forEach((ctrl, idx) => {
+            const isSelected = selectedControllerPath === ctrl.path;
+            listHtml += `
+              <div style="padding: 8px; margin: 4px 0; background: ${isSelected ? '#00aaff33' : '#2a2a4e'}; border-radius: 6px; cursor: pointer; border: ${isSelected ? '2px solid #00aaff' : '2px solid transparent'};"
+                   onclick="selectController('${ctrl.path}', this)">
+                <strong>${ctrl.name}</strong>
+                <div style="font-size: 11px; color: #888;">${ctrl.path}</div>
+              </div>
+            `;
+          });
+          controllerList.innerHTML = listHtml;
+
+          // Auto-select first controller
+          if (!selectedControllerPath && data.controllers.length > 0) {
+            selectedControllerPath = data.controllers[0].path;
+            scanControllers(); // Refresh to show selection
+          }
+
+          startBtn.style.display = 'inline-block';
+        } else {
+          statusText.textContent = 'No controllers found. Make sure your controller is turned on and the USB dongle is plugged in.';
+          statusText.style.color = '#ffaa00';
+          controllerList.innerHTML = '';
+          startBtn.style.display = 'none';
+        }
+      } catch (error) {
+        statusText.textContent = 'Error scanning: ' + error.message;
+        statusText.style.color = '#ff4444';
+      }
+
+      scanBtn.disabled = false;
+    }
+
+    function selectController(path, element) {
+      selectedControllerPath = path;
+      // Update visual selection
+      document.querySelectorAll('#controller-list > div').forEach(div => {
+        div.style.background = '#2a2a4e';
+        div.style.border = '2px solid transparent';
+      });
+      element.style.background = '#00aaff33';
+      element.style.border = '2px solid #00aaff';
+    }
+
+    async function startController() {
+      const statusText = document.getElementById('controller-status-text');
+      const startBtn = document.getElementById('start-controller-btn');
+      const stopBtn = document.getElementById('stop-controller-btn');
+      const inputDisplay = document.getElementById('controller-input-display');
+
+      if (!selectedControllerPath) {
+        statusText.textContent = 'Please select a controller first';
+        return;
+      }
+
+      try {
+        // Select the controller
+        await fetch('/api/controller/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: selectedControllerPath })
+        });
+
+        // Start reading input
+        const response = await fetch('/api/controller/start', {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          controllerConnected = true;
+          statusText.textContent = 'Controller connected! Use the left stick or D-pad to move.';
+          statusText.style.color = '#00ff00';
+          startBtn.style.display = 'none';
+          stopBtn.style.display = 'inline-block';
+          inputDisplay.style.display = 'block';
+        } else {
+          statusText.textContent = 'Failed to start controller: ' + data.message;
+          statusText.style.color = '#ff4444';
+        }
+      } catch (error) {
+        statusText.textContent = 'Error: ' + error.message;
+        statusText.style.color = '#ff4444';
+      }
+    }
+
+    async function stopController() {
+      const statusText = document.getElementById('controller-status-text');
+      const startBtn = document.getElementById('start-controller-btn');
+      const stopBtn = document.getElementById('stop-controller-btn');
+      const inputDisplay = document.getElementById('controller-input-display');
+
+      try {
+        const response = await fetch('/api/controller/stop', {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        controllerConnected = false;
+        statusText.textContent = 'Controller disconnected';
+        statusText.style.color = '#ffffff';
+        startBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+        inputDisplay.style.display = 'none';
+      } catch (error) {
+        statusText.textContent = 'Error: ' + error.message;
+        statusText.style.color = '#ff4444';
+      }
+    }
+
+    // Handle controller events from WebSocket
+    function handleControllerEvent(data) {
+      if (data.type === 'controller_event') {
+        document.getElementById('last-input').textContent = `${data.input}: ${data.value}`;
+      } else if (data.type === 'controller_input') {
+        document.getElementById('last-direction').textContent = `${data.direction} (${data.speed.toFixed(2)})`;
       }
     }
 

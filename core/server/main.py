@@ -24,6 +24,7 @@ from .extension_request import router as extension_request_router
 from .extension_versions import router as extension_versions_router
 from .motor_control import router as motor_router
 from .deployment import router as deployment_router
+from .controller import router as controller_router, set_broadcast_function as set_controller_broadcast
 
 app = FastAPI(title="E-NOR", version="1.0.0")
 
@@ -49,6 +50,7 @@ app.include_router(extension_request_router)
 app.include_router(extension_versions_router)
 app.include_router(motor_router)
 app.include_router(deployment_router)
+app.include_router(controller_router)
 
 connected_clients: List[WebSocket] = []
 
@@ -72,6 +74,8 @@ async def startup_event():
     init_extensions()
     # Connect the broadcast function to all extension APIs
     set_broadcast_function(broadcast)
+    # Connect broadcast to controller module
+    set_controller_broadcast(broadcast)
     print(f"Loaded {len(get_all_extensions())} extensions")
 
 
@@ -82,6 +86,9 @@ async def shutdown_event():
     # Clean up motor GPIO
     from hardware.motors import cleanup as motor_cleanup
     motor_cleanup()
+    # Clean up controller
+    from hardware.controller import cleanup as controller_cleanup
+    controller_cleanup()
     print("Cleanup complete")
 
 
