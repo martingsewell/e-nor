@@ -854,6 +854,14 @@ async def chat(message: ChatMessage) -> Dict:
             "end_conversation": action_results["end_conversation"]
         }
 
+        # If a mode was successfully ACTIVATED, skip the agent's emotion
+        # The mode handler's set_emotion() call will control the face instead
+        # This prevents a brief "flash" of the agent's emotion before the handler's emotion
+        mode_result = action_results.get("mode_activated")
+        if mode_result and mode_result.get("success") and mode_result.get("active"):
+            # Set to None - frontend will ignore null emotion
+            result["emotion"] = None
+
         # Include extension request info if present
         if action_results["extension_requests"]:
             result["extension_request"] = action_results["extension_requests"][0]
