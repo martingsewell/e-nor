@@ -2267,10 +2267,21 @@
       send({ type: 'emotion', emotion: name });
     }
 
-    function applyEmotion(name) {
+    async function applyEmotion(name) {
       currentEmotion = name;
-      const e = emotions[name];
-      if (!e) return;
+      let e = emotions[name];
+
+      // If emotion not found, try reloading custom emotions (race condition fix)
+      if (!e && !name.startsWith('_')) {
+        console.log('Emotion not found, reloading custom emotions:', name);
+        await loadCustomEmotions();
+        e = emotions[name];
+      }
+
+      if (!e) {
+        console.warn('Emotion still not found after reload:', name);
+        return;
+      }
 
       // Stop any existing color cycling
       if (colorCycleInterval) {
