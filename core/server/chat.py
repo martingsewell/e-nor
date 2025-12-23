@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from .secrets import get_secret, has_secret
 from .memories import get_memories_for_prompt, save_memory, update_memory, forget_memory
 from .config import load_config, get_robot_name, get_child_name, get_child_age, get_config_value
+from . import motor_control
 from .extension_request import create_extension_issue, suggest_alternative, load_extension_requests
 from .plugin_loader import get_all_extensions, get_enabled_extensions, set_extension_enabled, execute_custom_action
 from .extension_versions import get_extension_versions, restore_extension, backup_extension
@@ -304,6 +305,25 @@ Available actions you can include in the "actions" array:
 11. Report a bug with an extension:
     {{"type": "report_bug", "power_name": "Dog Mode", "description": "The bark sound doesn't work"}}
 
+12. Move the robot (voice-controlled movement):
+    {{"type": "movement", "steps": [
+      {{"type": "move", "direction": "forward", "value": 100}},
+      {{"type": "turn", "direction": "left", "value": 90}},
+      {{"type": "move", "direction": "forward", "value": 50}}
+    ]}}
+    - "type": "move" for forward/backward, "turn" for left/right
+    - "direction": "forward", "backward", "left", or "right"
+    - "value": distance in centimeters for moves, degrees for turns
+    - Common patterns:
+      - "go forward 1 meter" = {{"type": "move", "direction": "forward", "value": 100}}
+      - "turn 90 degrees left" = {{"type": "turn", "direction": "left", "value": 90}}
+      - "go back 50 centimeters" = {{"type": "move", "direction": "backward", "value": 50}}
+      - "do a 180" = {{"type": "turn", "direction": "right", "value": 180}}
+      - "figure 8" = multiple moves and turns to trace a figure 8 pattern
+      - "spin around" = {{"type": "turn", "direction": "right", "value": 360}}
+      - "go in a square" = 4x (forward + turn 90)
+      - "go in a circle" = many small forward + slight turns
+
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
 - Call rollback "undo", "go back", "fix it", or "make it like before"
@@ -412,6 +432,70 @@ User: "Dog mode isn't working right" / "There's a bug in cat mode"
   "actions": [{{"type": "report_bug", "power_name": "Dog Mode", "description": "User reported it's not working correctly"}}]
 }}
 
+User: "Go forward 1 meter"
+{{
+  "message": "Okay, moving forward 1 meter!",
+  "emotion": "excited",
+  "actions": [{{"type": "movement", "steps": [{{"type": "move", "direction": "forward", "value": 100}}]}}]
+}}
+
+User: "Turn 90 degrees left and then go forward 50 centimeters"
+{{
+  "message": "Turning left and then going forward!",
+  "emotion": "happy",
+  "actions": [{{"type": "movement", "steps": [
+    {{"type": "turn", "direction": "left", "value": 90}},
+    {{"type": "move", "direction": "forward", "value": 50}}
+  ]}}]
+}}
+
+User: "Do a figure 8"
+{{
+  "message": "Ooh, a figure 8! Here I go!",
+  "emotion": "excited",
+  "actions": [{{"type": "movement", "steps": [
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "right", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "right", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "right", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "right", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "left", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "left", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "left", "value": 45}},
+    {{"type": "move", "direction": "forward", "value": 30}},
+    {{"type": "turn", "direction": "left", "value": 45}}
+  ]}}]
+}}
+
+User: "Spin around"
+{{
+  "message": "Wheee! Spinning!",
+  "emotion": "excited",
+  "actions": [{{"type": "movement", "steps": [{{"type": "turn", "direction": "right", "value": 360}}]}}]
+}}
+
+User: "Go in a square"
+{{
+  "message": "Making a square! Here I go!",
+  "emotion": "happy",
+  "actions": [{{"type": "movement", "steps": [
+    {{"type": "move", "direction": "forward", "value": 50}},
+    {{"type": "turn", "direction": "right", "value": 90}},
+    {{"type": "move", "direction": "forward", "value": 50}},
+    {{"type": "turn", "direction": "right", "value": 90}},
+    {{"type": "move", "direction": "forward", "value": 50}},
+    {{"type": "turn", "direction": "right", "value": 90}},
+    {{"type": "move", "direction": "forward", "value": 50}},
+    {{"type": "turn", "direction": "right", "value": 90}}
+  ]}}]
+}}
+
 Remember:
 - ONLY output valid JSON, nothing else
 - Keep messages SHORT for voice (1-2 sentences)
@@ -421,6 +505,8 @@ Remember:
 - Only use "extension_confirmed" if the user has already confirmed a proposal
 - If they ask for something that needs core changes (not possible as extension), suggest a creative alternative that CAN be an extension
 - Be creative in finding ways to say "yes" to feature requests - almost anything can be an extension!
+- For movement commands: use "movement" action with an array of steps, value is in centimeters for moves and degrees for turns
+- Convert common units: 1 meter = 100cm, 1 foot = 30cm, half turn = 180 degrees, quarter turn = 90 degrees
 
 You are speaking directly to {child_name if child_name else 'your friend'} unless told otherwise."""
 
@@ -514,6 +600,7 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
         "power_undone": None,
         "mode_activated": None,
         "bug_reported": None,
+        "movement_executed": None,
         "end_conversation": False
     }
 
@@ -732,6 +819,86 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
             else:
                 print(f"Failed to report bug: {bug_result.get('message')}")
 
+        elif action_type == "movement":
+            # Voice-controlled robot movement
+            # Check if voice movement is enabled
+            features = get_config_value("features", {})
+            if not features.get("voice_movement_enabled", False):
+                results["movement_executed"] = {
+                    "success": False,
+                    "error": "Voice movement is disabled"
+                }
+                print("Movement action ignored - voice movement is disabled")
+                continue
+
+            steps = action.get("steps", [])
+            if not steps:
+                results["movement_executed"] = {
+                    "success": False,
+                    "error": "No movement steps provided"
+                }
+                continue
+
+            # Convert the steps to the motor API format
+            motor_steps = []
+            for step in steps:
+                step_type = step.get("type", "move")
+                direction = step.get("direction", "forward")
+                value = step.get("value", 0)
+
+                if step_type in ["move", "forward", "backward"]:
+                    motor_steps.append({
+                        "type": "move",
+                        "direction": "forward" if step_type == "forward" else ("backward" if step_type == "backward" else direction),
+                        "value": value  # distance in cm
+                    })
+                elif step_type in ["turn", "left", "right"]:
+                    motor_steps.append({
+                        "type": "turn",
+                        "direction": "left" if step_type == "left" else ("right" if step_type == "right" else direction),
+                        "value": value  # degrees
+                    })
+
+            if motor_steps:
+                try:
+                    # Create sequence request
+                    from .motor_control import SequenceRequest, MovementStep, motor_sequence
+
+                    sequence_steps = [
+                        MovementStep(type=s["type"], direction=s["direction"], value=s["value"])
+                        for s in motor_steps
+                    ]
+                    request = SequenceRequest(steps=sequence_steps)
+
+                    # Execute the sequence
+                    result = await motor_sequence(request)
+                    results["movement_executed"] = {
+                        "success": result.get("success", False),
+                        "steps_completed": result.get("steps_completed", 0),
+                        "total_steps": result.get("total_steps", 0),
+                        "total_duration": result.get("total_duration", 0),
+                        "results": result.get("results", [])
+                    }
+                    print(f"Movement executed: {result.get('steps_completed', 0)} steps completed")
+
+                    # Broadcast movement status
+                    await broadcast_action({
+                        "type": "movement_complete",
+                        "success": result.get("success", False),
+                        "steps_completed": result.get("steps_completed", 0)
+                    })
+                except Exception as e:
+                    results["movement_executed"] = {
+                        "success": False,
+                        "error": str(e)
+                    }
+                    print(f"Movement error: {e}")
+            else:
+                results["movement_executed"] = {
+                    "success": False,
+                    "error": "Could not parse movement steps"
+                }
+
     return results
 
 
@@ -893,6 +1060,10 @@ async def chat(message: ChatMessage) -> Dict:
         # Include bug report result
         if action_results["bug_reported"]:
             result["bug_reported"] = action_results["bug_reported"]
+
+        # Include movement result
+        if action_results["movement_executed"]:
+            result["movement_executed"] = action_results["movement_executed"]
 
         return result
 

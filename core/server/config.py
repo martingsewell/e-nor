@@ -44,7 +44,15 @@ DEFAULT_CONFIG = {
         "voice_enabled": True,
         "disco_mode_enabled": True,
         "extension_creation_enabled": True,
-        "motor_control_enabled": False
+        "motor_control_enabled": False,
+        "voice_movement_enabled": False
+    },
+    "motor_calibration": {
+        "cm_per_second": 20.0,
+        "degrees_per_second": 90.0,
+        "left_motor_trim": 1.0,
+        "right_motor_trim": 1.0,
+        "default_speed": 0.7
     },
     "limits": {
         "max_memories": 50,
@@ -392,7 +400,7 @@ async def update_features_config(features: Dict) -> Dict:
     """Update feature toggles"""
     config = load_config()
     # Only update known feature keys
-    known_features = ["voice_enabled", "disco_mode_enabled", "extension_creation_enabled", "motor_control_enabled"]
+    known_features = ["voice_enabled", "disco_mode_enabled", "extension_creation_enabled", "motor_control_enabled", "voice_movement_enabled"]
     for key in known_features:
         if key in features:
             config["features"][key] = bool(features[key])
@@ -497,3 +505,42 @@ async def update_display_config(display: DisplayConfig) -> Dict:
 
     success = save_config(config)
     return {"success": success, "display": config["display"]}
+
+
+class MotorCalibrationConfig(BaseModel):
+    cm_per_second: float = 20.0
+    degrees_per_second: float = 90.0
+    left_motor_trim: float = 1.0
+    right_motor_trim: float = 1.0
+    default_speed: float = 0.7
+
+
+@router.get("/motor-calibration")
+async def get_motor_calibration() -> Dict:
+    """Get motor calibration settings"""
+    config = load_config()
+    return config.get("motor_calibration", {
+        "cm_per_second": 20.0,
+        "degrees_per_second": 90.0,
+        "left_motor_trim": 1.0,
+        "right_motor_trim": 1.0,
+        "default_speed": 0.7
+    })
+
+
+@router.put("/motor-calibration")
+async def update_motor_calibration(calibration: MotorCalibrationConfig) -> Dict:
+    """Update motor calibration settings"""
+    config = load_config()
+
+    # Validate and clamp values
+    config["motor_calibration"] = {
+        "cm_per_second": max(1.0, min(100.0, calibration.cm_per_second)),
+        "degrees_per_second": max(10.0, min(360.0, calibration.degrees_per_second)),
+        "left_motor_trim": max(0.5, min(1.5, calibration.left_motor_trim)),
+        "right_motor_trim": max(0.5, min(1.5, calibration.right_motor_trim)),
+        "default_speed": max(0.1, min(1.0, calibration.default_speed))
+    }
+
+    success = save_config(config)
+    return {"success": success, "motor_calibration": config["motor_calibration"]}

@@ -875,6 +875,16 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+      <div class="extension-item">
+        <div class="extension-info">
+          <div class="extension-name">Voice Movement Control</div>
+          <div class="extension-desc">Allow voice commands to control robot movement (e.g., "go forward 1 meter")</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="feature-voice-movement" onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- Motor Control -->
@@ -907,6 +917,70 @@
         <span class="speed-value" id="speed-value">70%</span>
       </div>
       <div class="motor-last-command" id="motor-last-command">Last command: none</div>
+    </div>
+
+    <!-- Motor Calibration -->
+    <div class="section" id="motor-calibration-section">
+      <h2 class="section-title">Motor Calibration</h2>
+      <p style="color: #888; font-size: 0.85rem; margin-bottom: 15px;">
+        Adjust these settings to calibrate voice-controlled movement. Use the test buttons to fine-tune accuracy.
+      </p>
+
+      <div class="form-group">
+        <label>Forward Speed (cm/second at full speed)</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" class="speed-slider" id="calibration-cm-per-second" min="5" max="50" value="20" step="1">
+          <span class="speed-value" id="cm-per-second-value">20</span>
+          <span style="color: #666; font-size: 0.8rem;">cm/s</span>
+        </div>
+        <p class="hint">How many centimeters E-NOR moves per second at full speed</p>
+      </div>
+
+      <div class="form-group">
+        <label>Turn Speed (degrees/second at full speed)</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" class="speed-slider" id="calibration-degrees-per-second" min="30" max="180" value="90" step="5">
+          <span class="speed-value" id="degrees-per-second-value">90</span>
+          <span style="color: #666; font-size: 0.8rem;">deg/s</span>
+        </div>
+        <p class="hint">How many degrees E-NOR turns per second at full speed</p>
+      </div>
+
+      <div class="form-group">
+        <label>Left Motor Trim</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" class="speed-slider" id="calibration-left-trim" min="50" max="150" value="100" step="1">
+          <span class="speed-value" id="left-trim-value">100%</span>
+        </div>
+        <p class="hint">Adjust if E-NOR drifts right (increase) or left (decrease)</p>
+      </div>
+
+      <div class="form-group">
+        <label>Right Motor Trim</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" class="speed-slider" id="calibration-right-trim" min="50" max="150" value="100" step="1">
+          <span class="speed-value" id="right-trim-value">100%</span>
+        </div>
+        <p class="hint">Adjust if E-NOR drifts left (increase) or right (decrease)</p>
+      </div>
+
+      <div class="form-group">
+        <label>Default Movement Speed</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" class="speed-slider" id="calibration-default-speed" min="30" max="100" value="70" step="5">
+          <span class="speed-value" id="default-speed-value">70%</span>
+        </div>
+        <p class="hint">Default speed for voice-controlled movements</p>
+      </div>
+
+      <div class="section-footer" style="flex-direction: column; gap: 15px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+          <button class="btn-secondary btn-small" onclick="testCalibrationForward()">Test: Forward 50cm</button>
+          <button class="btn-secondary btn-small" onclick="testCalibrationTurn()">Test: Turn 90°</button>
+          <button class="btn-secondary btn-small" onclick="testCalibrationSquare()">Test: Square</button>
+        </div>
+        <button class="btn-primary" onclick="saveMotorCalibration()">Save Calibration</button>
+      </div>
     </div>
 
     <!-- Voice Settings -->
@@ -1095,6 +1169,26 @@
       document.getElementById('feature-disco').checked = config.features?.disco_mode_enabled !== false;
       document.getElementById('feature-extensions').checked = config.features?.extension_creation_enabled !== false;
       document.getElementById('feature-motors').checked = config.features?.motor_control_enabled === true;
+      document.getElementById('feature-voice-movement').checked = config.features?.voice_movement_enabled === true;
+
+      // Motor calibration
+      const calibration = config.motor_calibration || {};
+      const cmPerSecond = calibration.cm_per_second || 20;
+      const degreesPerSecond = calibration.degrees_per_second || 90;
+      const leftTrim = (calibration.left_motor_trim || 1.0) * 100;
+      const rightTrim = (calibration.right_motor_trim || 1.0) * 100;
+      const defaultSpeed = (calibration.default_speed || 0.7) * 100;
+
+      document.getElementById('calibration-cm-per-second').value = cmPerSecond;
+      document.getElementById('cm-per-second-value').textContent = cmPerSecond;
+      document.getElementById('calibration-degrees-per-second').value = degreesPerSecond;
+      document.getElementById('degrees-per-second-value').textContent = degreesPerSecond;
+      document.getElementById('calibration-left-trim').value = leftTrim;
+      document.getElementById('left-trim-value').textContent = leftTrim + '%';
+      document.getElementById('calibration-right-trim').value = rightTrim;
+      document.getElementById('right-trim-value').textContent = rightTrim + '%';
+      document.getElementById('calibration-default-speed').value = defaultSpeed;
+      document.getElementById('default-speed-value').textContent = defaultSpeed + '%';
 
       // Voice settings
       document.getElementById('voice-gender').value = config.voice?.gender || 'female';
@@ -1262,7 +1356,8 @@
             voice_enabled: document.getElementById('feature-voice').checked,
             disco_mode_enabled: document.getElementById('feature-disco').checked,
             extension_creation_enabled: document.getElementById('feature-extensions').checked,
-            motor_control_enabled: document.getElementById('feature-motors').checked
+            motor_control_enabled: document.getElementById('feature-motors').checked,
+            voice_movement_enabled: document.getElementById('feature-voice-movement').checked
           })
         });
         if (response.ok) {
@@ -1900,9 +1995,145 @@
       }
     }
 
+    // Motor Calibration
+    function initCalibrationSliders() {
+      // cm per second slider
+      const cmSlider = document.getElementById('calibration-cm-per-second');
+      const cmValue = document.getElementById('cm-per-second-value');
+      cmSlider.addEventListener('input', () => {
+        cmValue.textContent = cmSlider.value;
+      });
+
+      // degrees per second slider
+      const degSlider = document.getElementById('calibration-degrees-per-second');
+      const degValue = document.getElementById('degrees-per-second-value');
+      degSlider.addEventListener('input', () => {
+        degValue.textContent = degSlider.value;
+      });
+
+      // left trim slider
+      const leftSlider = document.getElementById('calibration-left-trim');
+      const leftValue = document.getElementById('left-trim-value');
+      leftSlider.addEventListener('input', () => {
+        leftValue.textContent = leftSlider.value + '%';
+      });
+
+      // right trim slider
+      const rightSlider = document.getElementById('calibration-right-trim');
+      const rightValue = document.getElementById('right-trim-value');
+      rightSlider.addEventListener('input', () => {
+        rightValue.textContent = rightSlider.value + '%';
+      });
+
+      // default speed slider
+      const speedSlider = document.getElementById('calibration-default-speed');
+      const speedValue = document.getElementById('default-speed-value');
+      speedSlider.addEventListener('input', () => {
+        speedValue.textContent = speedSlider.value + '%';
+      });
+    }
+
+    async function saveMotorCalibration() {
+      try {
+        const response = await fetch('/api/config/motor-calibration', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cm_per_second: parseFloat(document.getElementById('calibration-cm-per-second').value),
+            degrees_per_second: parseFloat(document.getElementById('calibration-degrees-per-second').value),
+            left_motor_trim: parseFloat(document.getElementById('calibration-left-trim').value) / 100,
+            right_motor_trim: parseFloat(document.getElementById('calibration-right-trim').value) / 100,
+            default_speed: parseFloat(document.getElementById('calibration-default-speed').value) / 100
+          })
+        });
+        if (response.ok) {
+          showToast('Calibration saved!');
+        } else {
+          showToast('Failed to save calibration', 'error');
+        }
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    }
+
+    async function testCalibrationForward() {
+      try {
+        showToast('Testing forward 50cm...');
+        const response = await fetch('/api/motor/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            direction: 'forward',
+            distance_cm: 50
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(`Forward test complete (${result.duration}s)`);
+        } else {
+          showToast('Test failed', 'error');
+        }
+      } catch (e) {
+        showToast('Test failed: ' + e.message, 'error');
+      }
+    }
+
+    async function testCalibrationTurn() {
+      try {
+        showToast('Testing turn 90°...');
+        const response = await fetch('/api/motor/turn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            direction: 'right',
+            degrees: 90
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(`Turn test complete (${result.duration}s)`);
+        } else {
+          showToast('Test failed', 'error');
+        }
+      } catch (e) {
+        showToast('Test failed: ' + e.message, 'error');
+      }
+    }
+
+    async function testCalibrationSquare() {
+      try {
+        showToast('Testing square pattern...');
+        const response = await fetch('/api/motor/sequence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            steps: [
+              { type: 'move', direction: 'forward', value: 30 },
+              { type: 'turn', direction: 'right', value: 90 },
+              { type: 'move', direction: 'forward', value: 30 },
+              { type: 'turn', direction: 'right', value: 90 },
+              { type: 'move', direction: 'forward', value: 30 },
+              { type: 'turn', direction: 'right', value: 90 },
+              { type: 'move', direction: 'forward', value: 30 },
+              { type: 'turn', direction: 'right', value: 90 }
+            ]
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(`Square test complete (${result.total_duration}s)`);
+        } else {
+          showToast('Test failed', 'error');
+        }
+      } catch (e) {
+        showToast('Test failed: ' + e.message, 'error');
+      }
+    }
+
     // Initialize
     loadAll();
     initMotorControls();
+    initCalibrationSliders();
     loadDeployStatus();
   </script>
 </body>
