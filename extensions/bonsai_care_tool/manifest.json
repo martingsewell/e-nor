@@ -1,0 +1,63 @@
+{
+  "id": "bonsai_care_tool",
+  "name": "Bonsai Care Tool",
+  "description": "A helpful guide with bonsai care tips, watering schedules, trimming advice, and reminders to keep your bonsai healthy and happy",
+  "version": "1.0.0",
+  "author": "Ronnie",
+  "type": "feature",
+  "category": "tools",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "bonsai care",
+        "help with bonsai",
+        "bonsai tips",
+        "how to care for bonsai",
+        "bonsai guide",
+        "looking after bonsai",
+        "bonsai help"
+      ],
+      "action": "show_bonsai_guide",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "water bonsai",
+        "when to water bonsai",
+        "watering schedule",
+        "bonsai watering"
+      ],
+      "action": "watering_advice",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "trim bonsai",
+        "prune bonsai",
+        "bonsai trimming",
+        "how to trim bonsai"
+      ],
+      "action": "trimming_advice",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "bonsai reminder",
+        "set bonsai reminder",
+        "bonsai schedule"
+      ],
+      "action": "set_reminder",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "bonsai facts",
+        "tell me about bonsai",
+        "bonsai information"
+      ],
+      "action": "bonsai_facts",
+      "handler": "handle_action"
+    }
+  ]
+}

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bonsai Care Tool</title>
+    <style>
+        .bonsai-care-tool {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2d5016;
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            color: #4a7c59;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        
+        .care-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .care-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .care-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .care-card h3 {
+            color: #2d5016;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            font-size: 1.3em;
+        }
+        
+        .care-card .icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        
+        .care-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .care-list li {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #4a7c59;
+        }
+        
+        .quick-tips {
+            background: linear-gradient(45deg, #fff3e0, #ffe0b2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .quick-tips h3 {
+            color: #e65100;
+            margin-top: 0;
+        }
+        
+        .tip-text {
+            font-style: italic;
+            font-size: 1.1em;
+            color: #333;
+        }
+        
+        .seasonal-advice {
+            background: linear-gradient(45deg, #e3f2fd, #bbdefb);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .seasonal-advice h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .care-button {
+            background: #4a7c59;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .care-button:hover {
+            background: #2d5016;
+            transform: scale(1.05);
+        }
+        
+        .care-button:active {
+            transform: scale(0.98);
+        }
+        
+        .watering-schedule {
+            background: linear-gradient(45deg, #e0f2f1, #b2dfdb);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4caf50, #81c784);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="bonsai-care-tool">
+        <div class="header">
+            <h1>🌲 Bonsai Care Tool</h1>
+            <p class="subtitle">Your guide to happy, healthy bonsai trees!</p>
+        </div>
+        
+        <div class="care-cards">
+            <div class="care-card">
+                <h3><span class="icon">💧</span>Watering</h3>
+                <ul class="care-list">
+                    <li>Check soil daily with your finger</li>
+                    <li>Water when top inch feels dry</li>
+                    <li>Water thoroughly until it drains out</li>
+                    <li>Morning watering is best</li>
+                    <li>Use room temperature water</li>
+                </ul>
+            </div>
+            
+            <div class="care-card">
+                <h3><span class="icon">☀️</span>Light & Position</h3>
+                <ul class="care-list">
+                    <li>Bright, indirect sunlight</li>
+                    <li>Place near a window</li>
+                    <li>Turn weekly for even growth</li>
+                    <li>Protect from harsh wind</li>
+                    <li>Avoid dark corners</li>
+                </ul>
+            </div>
+            
+            <div class="care-card">
+                <h3><span class="icon">✂️</span>Pruning & Trimming</h3>
+                <ul class="care-list">
+                    <li>Use clean, sharp bonsai tools</li>
+                    <li>Remove dead branches first</li>
+                    <li>Trim back to leaf nodes or buds</li>
+                    <li>Best done in spring/summer</li>
+                    <li>Don't remove more than 1/3 at once</li>
+                </ul>
+            </div>
+            
+            <div class="care-card">
+                <h3><span class="icon">🌱</span>Feeding</h3>
+                <ul class="care-list">
+                    <li>Use diluted liquid fertilizer</li>
+                    <li>Feed every 2-4 weeks in growing season</li>
+                    <li>Reduce feeding in winter</li>
+                    <li>Follow package directions</li>
+                    <li>Organic options are great too</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="quick-tips">
+            <h3>🔥 Quick Tip of the Day</h3>
+            <p class="tip-text" id="dailyTip">Bonsai care is like a meditation - take your time and enjoy the peaceful process!</p>
+        </div>
+        
+        <div class="seasonal-advice">
+            <h3>🌸 Seasonal Care</h3>
+            <p id="seasonalAdvice">Adjust your care routine based on the current season for best results.</p>
+        </div>
+        
+        <div class="watering-schedule">
+            <h3>💧 Watering Reminder</h3>
+            <p>Days since last watering:</p>
+            <div class="progress-indicator">
+                <span>0</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 30%"></div>
+                </div>
+                <span>7</span>
+            </div>
+            <p><small>Most bonsai need water every 2-3 days</small></p>
+        </div>
+        
+        <div class="buttons">
+            <button class="care-button" onclick="getWateringTip()">💧 Watering Tip</button>
+            <button class="care-button" onclick="getTrimmingTip()">✂️ Trimming Advice</button>
+            <button class="care-button" onclick="getBonsaiFact()">🌱 Fun Fact</button>
+            <button class="care-button" onclick="setReminder()">⏰ Set Reminder</button>
+        </div>
+    </div>
+    
+    <script>
+        // Daily tips rotation
+        const tips = [
+            "Bonsai care is like a meditation - take your time and enjoy the peaceful process!",
+            "The secret to healthy bonsai is consistent, gentle care rather than dramatic changes",
+            "Observe your bonsai daily - it will tell you what it needs through its leaves and soil",
+            "Patience is the most important tool in bonsai care - growth takes time!",
+            "A well-cared-for bonsai can live for generations and become a family treasure",
+            "The best time to start caring for a bonsai was yesterday, the second best time is now!"
+        ];
+        
+        // Seasonal advice
+        const seasonalTips = {
+            spring: "Spring is repotting season! Time for increased watering and regular feeding as growth begins.",
+            summer: "Summer means daily watering checks and watching for pests. Growth is at its peak!",
+            autumn: "Autumn is time to reduce feeding and prepare your bonsai for winter dormancy.",
+            winter: "Winter means less watering and no fertilizing. Let your bonsai rest and recover."
+        };
+        
+        // Set random tip on load
+        function updateDailyTip() {
+            const tipElement = document.getElementById('dailyTip');
+            const randomTip = tips[Math.floor(Math.random() * tips.length)];
+            tipElement.textContent = randomTip;
+        }
+        
+        // Set seasonal advice
+        function updateSeasonalAdvice() {
+            const month = new Date().getMonth();
+            let season;
+            
+            if (month >= 2 && month <= 4) season = 'spring';
+            else if (month >= 5 && month <= 7) season = 'summer';
+            else if (month >= 8 && month <= 10) season = 'autumn';
+            else season = 'winter';
+            
+            document.getElementById('seasonalAdvice').textContent = seasonalTips[season];
+        }
+        
+        // Interactive buttons
+        function getWateringTip() {
+            // This would trigger the voice command in the actual extension
+            alert("💧 Check if the top inch of soil feels dry before watering!");
+        }
+        
+        function getTrimmingTip() {
+            alert("✂️ Always use clean tools and trim just above a leaf node or bud!");
+        }
+        
+        function getBonsaiFact() {
+            const facts = [
+                "Some bonsai trees are over 1000 years old!",
+                "Bonsai means 'planted in a container' in Japanese",
+                "Any tree species can potentially become a bonsai",
+                "The art of bonsai teaches patience and mindfulness"
+            ];
+            const randomFact = facts[Math.floor(Math.random() * facts.length)];
+            alert("🌱 " + randomFact);
+        }
+        
+        function setReminder() {
+            alert("⏰ Reminder set! I'll remind you to check your bonsai tomorrow!");
+        }
+        
+        // Initialize on load
+        updateDailyTip();
+        updateSeasonalAdvice();
+        
+        // Update watering progress bar based on days
+        function updateWateringProgress() {
+            // This would be connected to real data in the actual extension
+            const daysSinceWatering = 2; // Example
+            const progressBar = document.querySelector('.progress-fill');
+            const percentage = Math.min((daysSinceWatering / 7) * 100, 100);
+            progressBar.style.width = percentage + '%';
+            
+            if (percentage > 50) {
+                progressBar.style.background = 'linear-gradient(45deg, #ff9800, #ffb74d)';
+            }
+            if (percentage > 80) {
+                progressBar.style.background = 'linear-gradient(45deg, #f44336, #e57373)';
+            }
+        }
+        
+        updateWateringProgress();
+    </script>
+</body>
+</html>
