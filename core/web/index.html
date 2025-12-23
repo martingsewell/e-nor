@@ -401,8 +401,10 @@
       display: flex;
       gap: 8px;
       padding: 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
       background: #1a1a2e;
       border-top: 1px solid #333;
+      flex-shrink: 0;
     }
 
     #chat-input {
@@ -1010,6 +1012,79 @@
       color: #fff;
     }
 
+    /* Pending Extensions (in development) */
+    .extension-item.pending {
+      border-left: 3px solid #ffa500;
+      opacity: 0.9;
+    }
+    .extension-item.pending .extension-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255, 165, 0, 0.2);
+      border-radius: 12px;
+      font-size: 11px;
+      color: #ffa500;
+      margin-top: 8px;
+    }
+    .extension-item.pending .extension-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #ffa500;
+      border-radius: 50%;
+      animation: pendingPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pendingPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .pending-section-title {
+      color: #ffa500;
+      font-size: 13px;
+      margin: 20px 0 10px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 165, 0, 0.3);
+    }
+
+    /* Extension Category Grid */
+    .extension-categories {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 15px;
+      background: #0d0d1a;
+      border-bottom: 1px solid #333;
+    }
+    .category-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 8px;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #888;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .category-btn:hover {
+      background: #222;
+      color: #fff;
+      border-color: #00ffff;
+    }
+    .category-btn .icon {
+      font-size: 20px;
+    }
+    .category-btn.active {
+      background: rgba(0, 255, 255, 0.1);
+      border-color: #00ffff;
+      color: #00ffff;
+    }
+
     /* Legacy - keep for compatibility */
     #current-version-info {
       display: none;
@@ -1547,6 +1622,41 @@
     <div id="versions-header">
       <h2>My Extensions</h2>
       <button id="close-versions" onclick="closeVersions()">&times;</button>
+    </div>
+
+    <div class="extension-categories">
+      <button class="category-btn" onclick="suggestExtension('game')">
+        <span class="icon">🎮</span>
+        <span>Games</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('quiz')">
+        <span class="icon">🧠</span>
+        <span>Quizzes</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('learning')">
+        <span class="icon">📚</span>
+        <span>Learning</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('creative')">
+        <span class="icon">🎨</span>
+        <span>Creative</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('joke')">
+        <span class="icon">😂</span>
+        <span>Jokes</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('story')">
+        <span class="icon">📖</span>
+        <span>Stories</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('mode')">
+        <span class="icon">🎭</span>
+        <span>Modes</span>
+      </button>
+      <button class="category-btn" onclick="suggestExtension('tool')">
+        <span class="icon">🛠️</span>
+        <span>Tools</span>
+      </button>
     </div>
 
     <div id="extensions-summary">
@@ -2456,11 +2566,23 @@
         const versionsResponse = await fetch('/api/extension-versions');
         const versionsData = await versionsResponse.json();
 
-        displayExtensionsList(extData.extensions, versionsData.extensions);
+        // Load pending extension requests (in development)
+        let pendingRequests = [];
+        try {
+          const pendingResponse = await fetch('/api/extension-requests/pending');
+          const pendingData = await pendingResponse.json();
+          pendingRequests = pendingData.pending || [];
+        } catch (e) {
+          console.log('No pending requests API or error:', e);
+        }
 
-        // Update count
+        displayExtensionsList(extData.extensions, versionsData.extensions, pendingRequests);
+
+        // Update count - include pending in the display
+        const totalCount = extData.total + pendingRequests.length;
+        const pendingText = pendingRequests.length > 0 ? ` (${pendingRequests.length} building)` : '';
         document.getElementById('extensions-count').textContent =
-          `${extData.total} extension${extData.total !== 1 ? 's' : ''}`;
+          `${extData.total} extension${extData.total !== 1 ? 's' : ''}${pendingText}`;
       } catch (error) {
         console.error('Error loading extensions:', error);
         document.getElementById('versions-list').innerHTML =
@@ -2468,22 +2590,49 @@
       }
     }
 
-    function displayExtensionsList(extensions, versionHistory) {
+    function displayExtensionsList(extensions, versionHistory, pendingRequests = []) {
       const list = document.getElementById('versions-list');
 
-      if (!extensions || extensions.length === 0) {
+      // Build pending requests HTML
+      let pendingHTML = '';
+      if (pendingRequests.length > 0) {
+        pendingHTML = `
+          <div class="pending-section-title">Building...</div>
+          ${pendingRequests.map(req => `
+            <div class="extension-item pending">
+              <div class="extension-header">
+                <div class="extension-info">
+                  <span class="extension-name">${req.title}</span>
+                </div>
+              </div>
+              <div class="extension-description">${req.description || 'Coming soon!'}</div>
+              <div class="extension-status">
+                ${req.issue_number ? `Issue #${req.issue_number}` : 'In queue'}
+              </div>
+            </div>
+          `).join('')}
+        `;
+      }
+
+      if ((!extensions || extensions.length === 0) && pendingRequests.length === 0) {
         list.innerHTML = `
           <div style="color: #888; text-align: center; padding: 40px 20px;">
             <div style="font-size: 48px; margin-bottom: 16px;">+</div>
             <div>No extensions yet!</div>
             <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
-              Ask me to create something and I'll make it for you.
+              Tap a category above or ask me to create something!
             </div>
           </div>`;
         return;
       }
 
-      list.innerHTML = extensions.map(ext => {
+      // If only pending, no installed extensions
+      if (!extensions || extensions.length === 0) {
+        list.innerHTML = pendingHTML;
+        return;
+      }
+
+      list.innerHTML = pendingHTML + extensions.map(ext => {
         const versions = versionHistory[ext.id]?.versions || [];
         const hasVersions = versions.length > 0;
 
@@ -2603,6 +2752,35 @@
         console.error('Delete error:', error);
         alert('Error deleting extension');
       }
+    }
+
+    function suggestExtension(category) {
+      // Close the extensions modal
+      closeVersions();
+
+      // Map categories to suggestion prompts
+      const suggestions = {
+        'game': "I want a fun game to play!",
+        'quiz': "Create a quiz to test my knowledge!",
+        'learning': "Help me learn something new!",
+        'creative': "I want to make something creative!",
+        'joke': "Tell me some jokes!",
+        'story': "Tell me an exciting story!",
+        'mode': "Create a fun mode for you!",
+        'tool': "I need a helpful tool!"
+      };
+
+      const message = suggestions[category] || "Create something cool for me!";
+
+      // Open chat if not visible
+      if (!document.body.classList.contains('chat-visible')) {
+        document.body.classList.add('chat-visible');
+      }
+
+      // Put the suggestion in the chat input
+      const chatInput = document.getElementById('chat-input');
+      chatInput.value = message;
+      chatInput.focus();
     }
 
     async function loadSecrets() {
