@@ -396,29 +396,11 @@ async def push_logs():
     }
     api_base = f"https://api.github.com/repos/{owner}/{repo}"
 
-    async with httpx.AsyncClient() as client:
-        # Check if logs branch exists
-        branch_resp = await client.get(f"{api_base}/branches/logs", headers=headers)
-
-        if branch_resp.status_code == 404:
-            # Create logs branch from main
-            main_resp = await client.get(f"{api_base}/git/ref/heads/main", headers=headers)
-            if main_resp.status_code != 200:
-                return {"success": False, "error": "Failed to get main branch"}
-
-            main_sha = main_resp.json()["object"]["sha"]
-            create_resp = await client.post(
-                f"{api_base}/git/refs",
-                headers=headers,
-                json={"ref": "refs/heads/logs", "sha": main_sha}
-            )
-            if create_resp.status_code not in [200, 201]:
-                return {"success": False, "error": f"Failed to create logs branch: {create_resp.text}"}
-
-        # Create/update file via Contents API
+    async with httpx.AsyncClient(timeout=30.0) as client:
         file_path = f"logs/{log_filename}"
         content_b64 = base64.b64encode(log_content.encode()).decode()
 
+        # Try to push file directly (branch may already exist)
         put_resp = await client.put(
             f"{api_base}/contents/{file_path}",
             headers=headers,
@@ -437,8 +419,51 @@ async def push_logs():
                 "branch": "logs",
                 "url": f"https://github.com/{owner}/{repo}/blob/logs/logs/{log_filename}"
             }
-        else:
-            return {"success": False, "error": f"Failed to push: {put_resp.text}"}
+
+        # If branch doesn't exist (422 error), create it
+        if put_resp.status_code == 422 or "Branch not found" in put_resp.text:
+            # Get main branch SHA
+            main_resp = await client.get(f"{api_base}/git/ref/heads/main", headers=headers)
+            if main_resp.status_code != 200:
+                return {"success": False, "error": "Failed to get main branch for creating logs branch"}
+
+            main_sha = main_resp.json()["object"]["sha"]
+
+            # Create logs branch
+            create_resp = await client.post(
+                f"{api_base}/git/refs",
+                headers=headers,
+                json={"ref": "refs/heads/logs", "sha": main_sha}
+            )
+
+            if create_resp.status_code not in [200, 201]:
+                # Token may not have branch creation permission
+                return {
+                    "success": False,
+                    "error": "Cannot create 'logs' branch. Please create it manually in GitHub, then try again."
+                }
+
+            # Retry pushing the file
+            put_resp = await client.put(
+                f"{api_base}/contents/{file_path}",
+                headers=headers,
+                json={
+                    "message": f"Log snapshot: {timestamp}",
+                    "content": content_b64,
+                    "branch": "logs"
+                }
+            )
+
+            if put_resp.status_code in [200, 201]:
+                return {
+                    "success": True,
+                    "message": "Logs pushed to GitHub",
+                    "log_file": log_filename,
+                    "branch": "logs",
+                    "url": f"https://github.com/{owner}/{repo}/blob/logs/logs/{log_filename}"
+                }
+
+        return {"success": False, "error": f"Failed to push logs: {put_resp.text[:200]}"}
 
 
 @router.get("/log")
