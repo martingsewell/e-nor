@@ -1,0 +1,10 @@
+# Dragon Fire Breath Sound File
+# This is a placeholder for the actual fire breathing sound effect
+# In a real implementation, this would be a WAV audio file containing:
+# A whooshing flame sound with crackling - WHOOOOOOSH-crackle-crackle
+# Duration: ~3 seconds
+# Frequency: White noise base with crackling overtones
+# Volume: Powerful rush of flame
+
+# File format: WAV (44.1kHz, 16-bit)
+# Sound description: Dragon breathing fire with flame crackling

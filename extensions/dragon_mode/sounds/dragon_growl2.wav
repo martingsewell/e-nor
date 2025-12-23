@@ -1,0 +1,10 @@
+# Dragon Growl Sound File #2
+# This is a placeholder for the actual dragon growl sound effect
+# In a real implementation, this would be a WAV audio file containing:
+# A more agitated dragon growl with snarl - GRRRAAAARRRR
+# Duration: ~1.8 seconds
+# Frequency: Mid-low range with crackling texture
+# Volume: Warning growl, building tension
+
+# File format: WAV (44.1kHz, 16-bit)
+# Sound description: Irritated dragon warning growl

@@ -1,0 +1,10 @@
+# Dragon Roar Sound File
+# This is a placeholder for the actual dragon roar sound effect
+# In a real implementation, this would be a WAV audio file containing:
+# A deep, powerful dragon roar - ROOOOOAAARRR!
+# Duration: ~3 seconds
+# Frequency: Low to mid range (200-800 Hz) with harmonic overtones
+# Volume: Strong and intimidating
+
+# File format: WAV (44.1kHz, 16-bit)
+# Sound description: Mighty dragon roar with reverb tail

@@ -1,0 +1,10 @@
+# Dragon Goodbye Sound File
+# This is a placeholder for the actual dragon farewell sound effect
+# In a real implementation, this would be a WAV audio file containing:
+# A softer, more gentle dragon rumble - rummmmmble-roooooar
+# Duration: ~2 seconds
+# Frequency: Deep but not aggressive (150-500 Hz)
+# Volume: Calming yet still majestic
+
+# File format: WAV (44.1kHz, 16-bit)
+# Sound description: Gentle dragon farewell rumble
