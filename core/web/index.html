@@ -3165,6 +3165,19 @@
           }
         }
 
+        // Handle extension creation result (voice input)
+        if (data.extension_request) {
+          console.log('Extension request result:', data.extension_request);
+          if (data.extension_request.success) {
+            addMessage(`Created extension request #${data.extension_request.issue_number}! It will be ready soon.`, 'system');
+          } else if (data.extension_request.duplicate) {
+            addMessage(data.extension_request.message || 'This was already requested!', 'system');
+          } else {
+            addMessage(`Couldn't create extension: ${data.extension_request.message}`, 'system');
+            console.error('Extension request failed:', data.extension_request);
+          }
+        }
+
         // Speak the response
         await speak(data.response);
 

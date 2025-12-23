@@ -102,7 +102,10 @@ def create_extension_issue(title: str, description: str, child_request: str) -> 
     """
     from .secrets import get_secret, has_secret
 
+    print(f"[ExtensionRequest] Creating issue: '{title}'")
+
     if not has_secret("GITHUB_TOKEN"):
+        print("[ExtensionRequest] ERROR: GITHUB_TOKEN not configured")
         return {"success": False, "message": "GitHub token not configured"}
 
     # Check for duplicate
@@ -250,6 +253,7 @@ api.move(action, params)     # Trigger motor movement
     try:
         token = get_secret("GITHUB_TOKEN")
         url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+        print(f"[ExtensionRequest] GitHub URL: {url}")
 
         data = {
             "title": f"[Extension] {title}",
@@ -271,8 +275,11 @@ api.move(action, params)     # Trigger motor movement
             method='POST'
         )
 
+        print(f"[ExtensionRequest] Sending request to GitHub...")
         with urllib.request.urlopen(req) as response:
             issue = json.loads(response.read().decode('utf-8'))
+
+        print(f"[ExtensionRequest] SUCCESS! Created issue #{issue['number']}")
 
         # Log the request
         add_extension_request(
@@ -291,8 +298,10 @@ api.move(action, params)     # Trigger motor movement
 
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
-        return {"success": False, "message": f"GitHub API error: {e.code}"}
+        print(f"[ExtensionRequest] HTTP ERROR {e.code}: {error_body}")
+        return {"success": False, "message": f"GitHub API error: {e.code} - {error_body[:100]}"}
     except Exception as e:
+        print(f"[ExtensionRequest] EXCEPTION: {type(e).__name__}: {e}")
         return {"success": False, "message": str(e)}
 
 
