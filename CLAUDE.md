@@ -4,6 +4,26 @@
 
 E-NOR is a customizable robot companion template. It runs on a Raspberry Pi 5 with a phone displaying the face and chat interface. The architecture separates **core code** (protected) from **extensions** (customizable), allowing children to add features via voice without modifying the base system.
 
+## Deployment
+
+**Pi Location:** `/home/ronniesewell/e-nor`
+**Service:** uvicorn running on port 8080
+**Auto-deploy:** Branches auto-merge to `main` and deploy to the Pi
+
+### Manual deployment (on Pi via SSH):
+```bash
+cd /home/ronniesewell/e-nor
+git pull
+sudo systemctl restart enor
+```
+
+### Check logs:
+```bash
+journalctl -u enor -f
+# or
+tail -f /home/ronniesewell/e-nor/logs/*.log
+```
+
 ## Architecture
 
 ### Directory Structure
