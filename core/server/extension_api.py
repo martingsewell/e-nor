@@ -12,6 +12,9 @@ import asyncio
 # Global registry of API instances - must be defined before ExtensionAPI class
 _api_instances: Dict[str, "ExtensionAPI"] = {}
 
+# Global emergency stop flag - when True, all extensions should stop running loops
+_emergency_stop_flag: bool = False
+
 
 class ExtensionAPI:
     """
@@ -303,6 +306,16 @@ class ExtensionAPI:
                 return None
         return None
 
+    def is_stopped(self) -> bool:
+        """Check if emergency stop has been triggered - extensions should check this in loops"""
+        global _emergency_stop_flag
+        return _emergency_stop_flag
+
+    def clear_stop_flag(self) -> None:
+        """Clear the emergency stop flag for this extension (called when starting a new action)"""
+        global _emergency_stop_flag
+        _emergency_stop_flag = False
+
 
 # Factory function to create API instances for extensions
 def get_extension_api(extension_id: str, extension_path: Path) -> ExtensionAPI:
@@ -323,6 +336,40 @@ def set_speak_function(func: Callable) -> None:
     """Set the speak function for all extension APIs"""
     for api in _api_instances.values():
         api._speak_func = func
+
+
+def signal_emergency_stop() -> None:
+    """Signal all extensions to stop their running loops immediately"""
+    global _emergency_stop_flag
+    _emergency_stop_flag = True
+    print("[ExtensionAPI] Emergency stop signaled to all extensions")
+
+
+def clear_emergency_stop() -> None:
+    """Clear the emergency stop flag (call when starting a new extension action)"""
+    global _emergency_stop_flag
+    _emergency_stop_flag = False
+
+
+def reset_all_extensions() -> None:
+    """
+    Reset all extension states - called during emergency stop.
+    This sets the global stop flag and clears common state data for all extensions.
+    """
+    global _emergency_stop_flag
+    _emergency_stop_flag = True
+
+    # Reset 'active' state for all extensions that have it
+    for ext_id, api in _api_instances.items():
+        try:
+            # If extension has an 'active' data flag, set it to False
+            if api.get_data("active", None) is not None:
+                api.set_data("active", False)
+                print(f"[ExtensionAPI] Reset 'active' state for {ext_id}")
+        except Exception as e:
+            print(f"[ExtensionAPI] Error resetting {ext_id}: {e}")
+
+    print(f"[ExtensionAPI] Reset {len(_api_instances)} extensions")
 
 
 # Extension handler base class that extension developers can subclass

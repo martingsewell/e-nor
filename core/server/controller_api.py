@@ -132,12 +132,22 @@ async def get_extension_buttons():
 
 @router.post("/emergency-stop")
 async def emergency_stop():
-    """Perform an emergency stop - stop all motors and reset state"""
+    """Perform an emergency stop - stop all motors, reset state, and stop all extension loops"""
     results = {
         "motors_stopped": False,
         "sequences_cancelled": False,
-        "state_reset": False
+        "state_reset": False,
+        "extensions_reset": False
     }
+
+    # FIRST: Signal all extensions to stop their loops immediately
+    try:
+        from .extension_api import reset_all_extensions
+        reset_all_extensions()
+        results["extensions_reset"] = True
+        print("Emergency stop: All extensions signaled to stop")
+    except Exception as e:
+        print(f"Error resetting extensions: {e}")
 
     # Stop motors
     try:

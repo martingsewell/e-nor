@@ -248,7 +248,14 @@ async def handle_message(data: dict, sender: WebSocket):
         print("Panel close requested")
 
     elif msg_type == "emergency_stop":
-        # Full emergency stop
+        # Full emergency stop - signal all extensions to stop their loops
+        try:
+            from .extension_api import reset_all_extensions
+            reset_all_extensions()
+            print("EMERGENCY STOP: All extensions signaled to stop")
+        except Exception as e:
+            print(f"Error resetting extensions: {e}")
+
         robot_state["emotion"] = "happy"
         robot_state["disco_mode"] = False
         robot_state["active_mode"] = None

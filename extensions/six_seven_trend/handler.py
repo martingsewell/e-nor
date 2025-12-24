@@ -24,8 +24,11 @@ SIX_SEVEN_RESPONSES = [
 
 async def handle_action(action: str, params: dict = None) -> dict:
     """Handle six seven trend actions"""
-    
+
     if action == "start_six_seven_trend":
+        # Clear any previous emergency stop flag so we can start fresh
+        api.clear_stop_flag()
+
         # Start the six seven trend!
         await api.speak("Let's do the six seven trend!")
         
@@ -119,14 +122,18 @@ async def handle_action(action: str, params: dict = None) -> dict:
 
 async def six_seven_chant():
     """Keep saying 'six seven' repeatedly while the trend is active"""
-    while api.get_data("active", False):
+    while api.get_data("active", False) and not api.is_stopped():
         # Wait a bit before next chant
         await asyncio.sleep(random.uniform(2, 4))
-        
-        # Check if still active
-        if api.get_data("active", False):
+
+        # Check if still active AND not emergency stopped
+        if api.get_data("active", False) and not api.is_stopped():
             response = random.choice(SIX_SEVEN_RESPONSES)
             await api.speak(response)
+        else:
+            # Stop was triggered, exit the loop
+            print("[six_seven_trend] Chant loop stopped by emergency stop or deactivation")
+            break
 
 async def on_load():
     """Called when extension loads - reset state"""
