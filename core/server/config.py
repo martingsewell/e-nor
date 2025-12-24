@@ -734,51 +734,27 @@ async def get_wifi_status() -> Dict:
     import subprocess
 
     try:
-        # Get current connection info
+        # Use 'iw' command (available on modern Pi OS, unlike iwconfig)
         result = subprocess.run(
-            ["iwconfig", "wlan0"],
+            ["iw", "dev", "wlan0", "link"],
             capture_output=True,
             text=True,
             timeout=5
         )
 
-        if result.returncode != 0:
-            # Try ip command as fallback
-            result = subprocess.run(
-                ["ip", "addr", "show", "wlan0"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-
-            if result.returncode != 0:
-                return {
-                    "connected": False,
-                    "ssid": None,
-                    "signal": None,
-                    "ip_address": None,
-                    "error": "Could not get WiFi status"
-                }
-
-        output = result.stdout
-
-        # Parse SSID
         ssid = None
-        if 'ESSID:"' in output:
-            start = output.find('ESSID:"') + 7
-            end = output.find('"', start)
-            ssid = output[start:end] if end > start else None
-
-        # Parse signal quality
         signal = None
-        if 'Signal level=' in output:
-            start = output.find('Signal level=') + 13
-            end = output.find(' ', start)
-            signal = output[start:end] if end > start else None
-        elif 'Link Quality=' in output:
-            start = output.find('Link Quality=') + 13
-            end = output.find(' ', start)
-            signal = output[start:end] if end > start else None
+
+        if result.returncode == 0:
+            output = result.stdout
+
+            # Parse SSID from iw output
+            for line in output.split('\n'):
+                line = line.strip()
+                if line.startswith('SSID:'):
+                    ssid = line[5:].strip()
+                elif line.startswith('signal:'):
+                    signal = line[7:].strip()
 
         # Get IP address
         ip_result = subprocess.run(
@@ -790,8 +766,8 @@ async def get_wifi_status() -> Dict:
         ip_address = ip_result.stdout.strip().split()[0] if ip_result.stdout.strip() else None
 
         return {
-            "connected": ssid is not None and ssid != "off/any",
-            "ssid": ssid if ssid != "off/any" else None,
+            "connected": ssid is not None and ssid != "",
+            "ssid": ssid,
             "signal": signal,
             "ip_address": ip_address
         }
@@ -799,7 +775,7 @@ async def get_wifi_status() -> Dict:
     except subprocess.TimeoutExpired:
         return {"connected": False, "error": "Command timed out"}
     except FileNotFoundError:
-        return {"connected": False, "error": "iwconfig not found (not on Pi?)"}
+        return {"connected": False, "error": "iw command not found"}
     except Exception as e:
         return {"connected": False, "error": str(e)}
 
