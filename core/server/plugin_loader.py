@@ -62,9 +62,11 @@ def _infer_category_from_type(ext_type: str) -> str:
         "game": "games",
         "mode": "modes",
         "utility": "tools",
+        "tool": "tools",
         "action": "tools",
         "feature": "tools",
         "emotion": "modes",
+        "quiz": "quizzes",
     }
     return type_to_category.get(ext_type, "tools")
 

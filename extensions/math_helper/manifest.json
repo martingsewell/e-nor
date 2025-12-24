@@ -1,0 +1,44 @@
+{
+  "id": "math_helper",
+  "name": "Math Helper",
+  "description": "A helpful calculator tool that E-NOR can use to solve maths problems. Ask me any maths question and I'll calculate it for you!",
+  "version": "1.0.0",
+  "author": "E-NOR",
+  "type": "tool",
+  "category": "tools",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "calculate",
+        "what is",
+        "solve",
+        "maths help",
+        "calculator",
+        "do the maths",
+        "work out"
+      ],
+      "action": "calculate",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "times tables",
+        "multiplication table",
+        "times table for"
+      ],
+      "action": "times_table",
+      "handler": "handle_action"
+    },
+    {
+      "phrases": [
+        "random number",
+        "pick a number",
+        "roll a dice",
+        "flip a coin"
+      ],
+      "action": "random_number",
+      "handler": "handle_action"
+    }
+  ]
+}

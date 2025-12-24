@@ -179,11 +179,11 @@ def get_installed_powers_for_prompt() -> str:
 
             if emotion_names and ext.extension_type == "mode":
                 text += f"- {ext.name}: {ext.description} (custom emotions: {', '.join(emotion_names)})\n"
-            elif ext.extension_type in ["feature", "tool", "utility"] and ext.voice_triggers:
-                # Include available actions for tool-type extensions
+            elif ext.extension_type in ["feature", "tool", "utility", "game", "action"] and ext.voice_triggers:
+                # Include available actions for non-mode extensions
                 actions = [t.get("action") for t in ext.voice_triggers if t.get("action")]
                 if actions:
-                    text += f"- {ext.name} (id: {ext.id}): {ext.description} (actions: {', '.join(actions)})\n"
+                    text += f"- {ext.name} (id: {ext.id}, type: {ext.extension_type}): {ext.description} (actions: {', '.join(actions)})\n"
                 else:
                     text += f"- {ext.name} (id: {ext.id}): {ext.description}\n"
             else:
@@ -196,7 +196,7 @@ def get_installed_powers_for_prompt() -> str:
 
     text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn a mode on/off, use activate_mode. When something is broken, use undo_power."
     text += "\nWhen a mode is active, use its custom emotions for more personality! For example, in Dragon Mode use 'fierce' emotion."
-    text += "\nFor tool/feature extensions (like Bonsai Care Tool), use run_extension with the extension_id and action name."
+    text += "\nFor games, tools, features, and actions (non-mode extensions), use run_extension with the extension_id and action name."
 
     return text
 
@@ -332,11 +332,14 @@ Available actions you can include in the "actions" array:
       - "go in a square" = 4x (forward + turn 90)
       - "go in a circle" = many small forward + slight turns
 
-13. Run an extension tool/feature (for tools like Bonsai Care, quizzes, utilities):
-    {{"type": "run_extension", "extension_id": "bonsai_care_tool", "action": "show_bonsai_guide"}}
-    - Use this to run a specific feature/tool extension that isn't a mode
+13. Run an extension (for games, tools, features, actions - anything that isn't a mode):
+    {{"type": "run_extension", "extension_id": "snake_game", "action": "start_snake_game"}}
+    - Use this for ALL non-mode extensions: games, tools, features, actions/trends
     - Check your installed powers list for available extension IDs and their actions
-    - Common actions: "show_guide", "get_tip", "show_info", "start", "help"
+    - Games: use "start_X" to play, "stop_X" to close (e.g., start_snake_game, stop_snake_game)
+    - Tools: use action names like "show_guide", "calculate", "get_tip", "help"
+    - Actions/trends: use "start_X" to trigger the action (e.g., start_six_seven_trend)
+    - You can also call tools programmatically when YOU need help with a task (like math calculations)
 
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
@@ -522,6 +525,34 @@ User: "When should I water my bonsai?"
   "message": "Here's a watering tip for your bonsai!",
   "emotion": "happy",
   "actions": [{{"type": "run_extension", "extension_id": "bonsai_care_tool", "action": "watering_advice"}}]
+}}
+
+User: "Let's play snake!" / "Play the snake game"
+{{
+  "message": "Ooh, let's play Snake! Use the arrow keys to control your snake!",
+  "emotion": "excited",
+  "actions": [{{"type": "run_extension", "extension_id": "snake_game", "action": "start_snake_game"}}]
+}}
+
+User: "Stop the game" / "Close snake"
+{{
+  "message": "Thanks for playing! That was fun!",
+  "emotion": "happy",
+  "actions": [{{"type": "run_extension", "extension_id": "snake_game", "action": "stop_snake_game"}}]
+}}
+
+User: "Six seven!" / "Do the six seven trend"
+{{
+  "message": "Six seven time! Let's go!",
+  "emotion": "excited",
+  "actions": [{{"type": "run_extension", "extension_id": "six_seven_trend", "action": "start_six_seven_trend"}}]
+}}
+
+User: "What's 247 times 83?" (if you have a math_helper tool installed)
+{{
+  "message": "Let me calculate that for you!",
+  "emotion": "thinking",
+  "actions": [{{"type": "run_extension", "extension_id": "math_helper", "action": "calculate", "params": {{"expression": "247 * 83"}}}}]
 }}
 
 Remember:
