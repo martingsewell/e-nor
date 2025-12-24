@@ -179,6 +179,13 @@ def get_installed_powers_for_prompt() -> str:
 
             if emotion_names and ext.extension_type == "mode":
                 text += f"- {ext.name}: {ext.description} (custom emotions: {', '.join(emotion_names)})\n"
+            elif ext.extension_type in ["feature", "tool", "utility"] and ext.voice_triggers:
+                # Include available actions for tool-type extensions
+                actions = [t.get("action") for t in ext.voice_triggers if t.get("action")]
+                if actions:
+                    text += f"- {ext.name} (id: {ext.id}): {ext.description} (actions: {', '.join(actions)})\n"
+                else:
+                    text += f"- {ext.name} (id: {ext.id}): {ext.description}\n"
             else:
                 text += f"- {ext.name}: {ext.description}\n"
 
@@ -189,6 +196,7 @@ def get_installed_powers_for_prompt() -> str:
 
     text += "\nWhen the child asks about your powers/abilities, use the list_powers action. When they want to turn a mode on/off, use activate_mode. When something is broken, use undo_power."
     text += "\nWhen a mode is active, use its custom emotions for more personality! For example, in Dragon Mode use 'fierce' emotion."
+    text += "\nFor tool/feature extensions (like Bonsai Care Tool), use run_extension with the extension_id and action name."
 
     return text
 
@@ -323,6 +331,12 @@ Available actions you can include in the "actions" array:
       - "spin around" = {{"type": "turn", "direction": "right", "value": 360}}
       - "go in a square" = 4x (forward + turn 90)
       - "go in a circle" = many small forward + slight turns
+
+13. Run an extension tool/feature (for tools like Bonsai Care, quizzes, utilities):
+    {{"type": "run_extension", "extension_id": "bonsai_care_tool", "action": "show_bonsai_guide"}}
+    - Use this to run a specific feature/tool extension that isn't a mode
+    - Check your installed powers list for available extension IDs and their actions
+    - Common actions: "show_guide", "get_tip", "show_info", "start", "help"
 
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
@@ -494,6 +508,20 @@ User: "Go in a square"
     {{"type": "move", "direction": "forward", "value": 50}},
     {{"type": "turn", "direction": "right", "value": 90}}
   ]}}]
+}}
+
+User: "Help me with my bonsai" / "bonsai care" / "bonsai tips"
+{{
+  "message": "Let me show you my bonsai care guide!",
+  "emotion": "happy",
+  "actions": [{{"type": "run_extension", "extension_id": "bonsai_care_tool", "action": "show_bonsai_guide"}}]
+}}
+
+User: "When should I water my bonsai?"
+{{
+  "message": "Here's a watering tip for your bonsai!",
+  "emotion": "happy",
+  "actions": [{{"type": "run_extension", "extension_id": "bonsai_care_tool", "action": "watering_advice"}}]
 }}
 
 Remember:
@@ -899,6 +927,40 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
                     "error": "Could not parse movement steps"
                 }
 
+        elif action_type == "run_extension":
+            extension_id = action.get("extension_id", "")
+            ext_action = action.get("action", "")
+            params = action.get("params", {})
+
+            if extension_id and ext_action:
+                # Execute the extension's handler
+                result = await execute_custom_action(extension_id, ext_action, params)
+
+                if "extension_executed" not in results:
+                    results["extension_executed"] = []
+
+                results["extension_executed"].append({
+                    "extension_id": extension_id,
+                    "action": ext_action,
+                    "success": result.get("success", False),
+                    "result": result.get("result"),
+                    "error": result.get("error")
+                })
+
+                if result.get("success"):
+                    print(f"Extension '{extension_id}' action '{ext_action}' executed successfully")
+                else:
+                    print(f"Extension '{extension_id}' action '{ext_action}' failed: {result.get('error')}")
+            else:
+                if "extension_executed" not in results:
+                    results["extension_executed"] = []
+                results["extension_executed"].append({
+                    "extension_id": extension_id,
+                    "action": ext_action,
+                    "success": False,
+                    "error": "Missing extension_id or action"
+                })
+
     return results
 
 
@@ -1064,6 +1126,10 @@ async def chat(message: ChatMessage) -> Dict:
         # Include movement result
         if action_results["movement_executed"]:
             result["movement_executed"] = action_results["movement_executed"]
+
+        # Include extension execution result
+        if action_results.get("extension_executed"):
+            result["extension_executed"] = action_results["extension_executed"]
 
         return result
 
