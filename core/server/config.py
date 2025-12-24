@@ -735,8 +735,9 @@ async def get_wifi_status() -> Dict:
 
     try:
         # Use 'iw' command (available on modern Pi OS, unlike iwconfig)
+        # Full path required for systemd service environment
         result = subprocess.run(
-            ["iw", "dev", "wlan0", "link"],
+            ["/usr/sbin/iw", "dev", "wlan0", "link"],
             capture_output=True,
             text=True,
             timeout=5
@@ -786,9 +787,9 @@ async def scan_wifi_networks() -> Dict:
     import subprocess
 
     try:
-        # Trigger a scan
+        # Trigger a scan (full path required for systemd service environment)
         subprocess.run(
-            ["sudo", "iw", "dev", "wlan0", "scan", "trigger"],
+            ["sudo", "/usr/sbin/iw", "dev", "wlan0", "scan", "trigger"],
             capture_output=True,
             timeout=5
         )
@@ -799,7 +800,7 @@ async def scan_wifi_networks() -> Dict:
 
         # Get scan results
         result = subprocess.run(
-            ["sudo", "iw", "dev", "wlan0", "scan"],
+            ["sudo", "/usr/sbin/iw", "dev", "wlan0", "scan"],
             capture_output=True,
             text=True,
             timeout=30
