@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Six Seven Trend</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #six-seven-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24, #ff6b6b);
+            background-size: 300% 300%;
+            animation: gradientShift 4s ease infinite, dance 0.6s ease-in-out infinite alternate;
+            z-index: 9999;
+            pointer-events: none;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes dance {
+            0% { transform: scale(1) rotate(-1deg); }
+            100% { transform: scale(1.03) rotate(1deg); }
+        }
+        
+        @keyframes float {
+            0% { 
+                transform: translateY(100vh) rotate(0deg) scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-100px) rotate(360deg) scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .number {
+            position: absolute;
+            font-family: 'Arial Black', Arial, sans-serif;
+            font-size: 5rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+            animation: float linear infinite;
+            user-select: none;
+        }
+        
+        .center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Arial Black', Arial, sans-serif;
+            font-size: 8rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+            animation: pulse 1s ease-in-out infinite;
+            z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+    <div id="six-seven-container">
+        <!-- Central pulsing text -->
+        <div class="center-text">6 7</div>
+        
+        <!-- Floating numbers - lots of them! -->
+        <div class="number" style="left: 5%; animation-duration: 3s; animation-delay: 0s; font-size: 4rem;">6</div>
+        <div class="number" style="left: 15%; animation-duration: 4s; animation-delay: 0.3s; font-size: 6rem;">7</div>
+        <div class="number" style="left: 25%; animation-duration: 3.5s; animation-delay: 0.6s; font-size: 5rem;">6</div>
+        <div class="number" style="left: 35%; animation-duration: 4.2s; animation-delay: 0.9s; font-size: 4.5rem;">7</div>
+        <div class="number" style="left: 45%; animation-duration: 3.8s; animation-delay: 1.2s; font-size: 5.5rem;">6</div>
+        <div class="number" style="left: 55%; animation-duration: 4.5s; animation-delay: 1.5s; font-size: 4rem;">7</div>
+        <div class="number" style="left: 65%; animation-duration: 3.2s; animation-delay: 1.8s; font-size: 6rem;">6</div>
+        <div class="number" style="left: 75%; animation-duration: 4.8s; animation-delay: 2.1s; font-size: 5rem;">7</div>
+        <div class="number" style="left: 85%; animation-duration: 3.6s; animation-delay: 2.4s; font-size: 4.5rem;">6</div>
+        <div class="number" style="left: 95%; animation-duration: 4.3s; animation-delay: 2.7s; font-size: 5.5rem;">7</div>
+        
+        <!-- Second wave -->
+        <div class="number" style="left: 10%; animation-duration: 3.7s; animation-delay: 3s; font-size: 4.2rem;">6</div>
+        <div class="number" style="left: 20%; animation-duration: 4.1s; animation-delay: 3.3s; font-size: 5.8rem;">7</div>
+        <div class="number" style="left: 30%; animation-duration: 3.3s; animation-delay: 3.6s; font-size: 4.8rem;">6</div>
+        <div class="number" style="left: 40%; animation-duration: 4.6s; animation-delay: 3.9s; font-size: 5.2rem;">7</div>
+        <div class="number" style="left: 50%; animation-duration: 3.9s; animation-delay: 4.2s; font-size: 4.6rem;">6</div>
+        <div class="number" style="left: 60%; animation-duration: 4.4s; animation-delay: 4.5s; font-size: 5.4rem;">7</div>
+        <div class="number" style="left: 70%; animation-duration: 3.1s; animation-delay: 4.8s; font-size: 4.3rem;">6</div>
+        <div class="number" style="left: 80%; animation-duration: 4.7s; animation-delay: 5.1s; font-size: 5.7rem;">7</div>
+        <div class="number" style="left: 90%; animation-duration: 3.4s; animation-delay: 5.4s; font-size: 4.9rem;">6</div>
+        
+        <!-- Third wave -->
+        <div class="number" style="left: 8%; animation-duration: 3.6s; animation-delay: 6s; font-size: 5.3rem;">7</div>
+        <div class="number" style="left: 18%; animation-duration: 4.2s; animation-delay: 6.3s; font-size: 4.4rem;">6</div>
+        <div class="number" style="left: 28%; animation-duration: 3.8s; animation-delay: 6.6s; font-size: 5.9rem;">7</div>
+        <div class="number" style="left: 38%; animation-duration: 4.5s; animation-delay: 6.9s; font-size: 4.1rem;">6</div>
+        <div class="number" style="left: 48%; animation-duration: 3.2s; animation-delay: 7.2s; font-size: 5.6rem;">7</div>
+        <div class="number" style="left: 58%; animation-duration: 4.8s; animation-delay: 7.5s; font-size: 4.7rem;">6</div>
+        <div class="number" style="left: 68%; animation-duration: 3.5s; animation-delay: 7.8s; font-size: 5.1rem;">7</div>
+        <div class="number" style="left: 78%; animation-duration: 4.1s; animation-delay: 8.1s; font-size: 4.8rem;">6</div>
+        <div class="number" style="left: 88%; animation-duration: 3.7s; animation-delay: 8.4s; font-size: 5.5rem;">7</div>
+    </div>
+</body>
+</html>
