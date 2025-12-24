@@ -1,0 +1,17 @@
+=== E-NOR Service Logs ===
+Collected at: 2025-12-24T17:17:49.151715
+
+-- No entries --
+
+=== File-based Logs (enor.log) ===
+nohup: ignoring input
+nohup: failed to run command 'uvicorn': No such file or directory
+
+=== System Info ===
+Hostname: e-nor
+Uptime: 17:17:49 up 23 min,  5 users,  load average: 0.05, 0.02, 0.00
+Memory:
+               total        used        free      shared  buff/cache   available
+Mem:           4.0Gi       501Mi       2.8Gi        27Mi       756Mi       3.5Gi
+Swap:          511Mi          0B       511Mi
+
