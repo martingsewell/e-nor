@@ -2362,6 +2362,31 @@
         } else if (msg.type === 'play_sound') {
           // Extension wants to play sound
           playExtensionSound(msg.path);
+        } else if (msg.type === 'start_voice_mode') {
+          // Controller triggered voice mode - start conversation without wake word
+          startConversationFromController();
+        } else if (msg.type === 'stop_voice_mode') {
+          // Controller stopped voice mode
+          endConversation();
+        } else if (msg.type === 'play_honk') {
+          // Play honk sound
+          playHonkSound();
+        } else if (msg.type === 'emergency_stop') {
+          // Full emergency stop - reset everything
+          handleEmergencyStop(msg.state);
+        } else if (msg.type === 'launch_game') {
+          // Open a game panel
+          launchGameFromController(msg.extension_id, msg.panel_id, msg.panel_file);
+        } else if (msg.type === 'close_panel') {
+          // Close any open panel
+          closeAllPanels();
+        } else if (msg.type === 'mode_change') {
+          // Mode changed from controller
+          if (msg.enabled) {
+            activateMode(msg.mode);
+          } else {
+            deactivateMode(msg.mode);
+          }
         }
       };
     }
@@ -3734,6 +3759,137 @@
       inConversation = false;
       setVoiceState('listening', 'Say "Hey E-NOR"');
       applyEmotion('happy');
+    }
+
+    // Start conversation from controller (bypass wake word)
+    async function startConversationFromController() {
+      if (!voiceSupported || !recognition) {
+        console.log('Voice not supported');
+        return;
+      }
+
+      console.log('Starting voice mode from controller');
+      inConversation = true;
+      setVoiceState('conversation', 'Listening...');
+      applyEmotion('happy');
+
+      // Request mic permission if needed
+      if (!micPermissionGranted) {
+        const granted = await requestMicPermission();
+        if (!granted) {
+          console.log('Mic permission denied');
+          return;
+        }
+      }
+
+      // Start listening
+      try {
+        if (!recognitionRunning) {
+          recognition.start();
+        }
+        await speak("I'm listening!");
+      } catch (e) {
+        console.error('Failed to start voice mode:', e);
+      }
+    }
+
+    // Play honk sound using Web Audio API
+    function playHonkSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+
+        // Main honk tone
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(200, now);
+        osc1.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+        gain1.gain.setValueAtTime(0.5, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.4);
+
+        // Secondary tone for richness
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(180, now);
+        osc2.frequency.exponentialRampToValueAtTime(140, now + 0.3);
+        gain2.gain.setValueAtTime(0.3, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now);
+        osc2.stop(now + 0.35);
+
+        console.log('Honk sound played');
+      } catch (e) {
+        console.error('Failed to play honk:', e);
+      }
+    }
+
+    // Handle emergency stop
+    function handleEmergencyStop(state) {
+      console.log('Emergency stop received');
+
+      // Stop any speaking
+      if (synthesis) {
+        synthesis.cancel();
+      }
+      isSpeaking = false;
+
+      // End conversation mode
+      inConversation = false;
+      setVoiceState('idle', 'Say "Hey E-NOR"');
+
+      // Reset to happy emotion
+      applyEmotion('happy');
+
+      // Stop disco mode if active
+      if (discoMode) {
+        toggleDisco();
+      }
+
+      // Close any open panels
+      closeAllPanels();
+
+      // Hide all overlays
+      document.querySelectorAll('.face-overlay').forEach(el => el.remove());
+
+      console.log('Emergency stop complete');
+    }
+
+    // Launch a game from the controller
+    async function launchGameFromController(extensionId, panelId, panelFile) {
+      console.log('Launching game:', extensionId);
+
+      try {
+        // Fetch the game's UI HTML
+        const response = await fetch(`/api/extensions/${extensionId}/panel/${panelFile}`);
+        if (response.ok) {
+          const html = await response.text();
+          showExtensionPanel(html, panelId, extensionId, 'game');
+        } else {
+          console.error('Failed to load game UI');
+        }
+      } catch (e) {
+        console.error('Error launching game:', e);
+      }
+    }
+
+    // Close all open panels
+    function closeAllPanels() {
+      const panelContainer = document.getElementById('extension-panel-container');
+      if (panelContainer) {
+        panelContainer.innerHTML = '';
+        panelContainer.classList.add('hidden');
+      }
+
+      // Notify server that panel is closed
+      send({ type: 'panel_closed', extensionId: null });
     }
 
     async function processVoiceInput(text) {

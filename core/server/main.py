@@ -24,6 +24,7 @@ from .extension_request import router as extension_request_router
 from .extension_versions import router as extension_versions_router
 from .motor_control import router as motor_router
 from .deployment import router as deployment_router
+from .controller_api import router as controller_router
 
 app = FastAPI(title="E-NOR", version="1.0.0")
 
@@ -49,6 +50,7 @@ app.include_router(extension_request_router)
 app.include_router(extension_versions_router)
 app.include_router(motor_router)
 app.include_router(deployment_router)
+app.include_router(controller_router)
 
 connected_clients: List[WebSocket] = []
 
@@ -222,6 +224,49 @@ async def handle_message(data: dict, sender: WebSocket):
         robot_state["active_panel"] = None
         robot_state["game_active"] = False
         print(f"Panel closed: {data.get('extensionId')}")
+
+    elif msg_type == "start_voice_mode":
+        # Tell the face UI to start listening (bypass wake word)
+        await broadcast({"type": "start_voice_mode"})
+        print("Voice mode started from controller")
+
+    elif msg_type == "stop_voice_mode":
+        # Tell the face UI to stop listening
+        await broadcast({"type": "stop_voice_mode"})
+        print("Voice mode stopped from controller")
+
+    elif msg_type == "play_honk":
+        # Broadcast honk sound to all clients
+        await broadcast({"type": "play_honk"})
+        print("Honk sound triggered")
+
+    elif msg_type == "close_panel":
+        # Close any open panel
+        robot_state["active_panel"] = None
+        robot_state["game_active"] = False
+        await broadcast({"type": "close_panel"})
+        print("Panel close requested")
+
+    elif msg_type == "emergency_stop":
+        # Full emergency stop
+        robot_state["emotion"] = "happy"
+        robot_state["disco_mode"] = False
+        robot_state["active_mode"] = None
+        robot_state["active_overlays"] = []
+        robot_state["active_panel"] = None
+        robot_state["game_active"] = False
+        await broadcast({"type": "emergency_stop", "state": robot_state})
+        print("EMERGENCY STOP triggered")
+
+    elif msg_type == "launch_game":
+        # Forward game launch request
+        await broadcast(data)
+        print(f"Game launch: {data.get('extension_id')}")
+
+    elif msg_type == "run_extension":
+        # Run an extension action
+        await broadcast(data)
+        print(f"Extension action: {data.get('extension_id')} - {data.get('action')}")
 
 
 async def broadcast(message: dict):

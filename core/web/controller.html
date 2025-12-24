@@ -407,6 +407,106 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+
+    /* Modal styles */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1a1a3a 0%, #2a2a4a 100%);
+      border: 2px solid #00ffff;
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+
+    .modal-content h3 {
+      color: #00ffff;
+      margin: 0 0 15px 0;
+      text-align: center;
+    }
+
+    .modal-close {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .modal-close:active {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .game-btn {
+      width: 100%;
+      padding: 15px;
+      margin: 8px 0;
+      background: rgba(0,255,255,0.1);
+      border: 1px solid #00ffff;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .game-btn:active {
+      background: rgba(0,255,255,0.3);
+    }
+
+    .game-btn .emoji {
+      font-size: 24px;
+    }
+
+    .game-btn .name {
+      flex: 1;
+    }
+
+    /* Extension buttons in quick actions */
+    #extension-buttons {
+      display: contents;
+    }
+
+    /* Voice mode active indicator */
+    .action-btn.voice-active {
+      animation: voicePulse 1s infinite;
+    }
+
+    @keyframes voicePulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(0,255,0,0.5); }
+      50% { box-shadow: 0 0 20px rgba(0,255,0,0.8); }
+    }
+
+    /* Mode active indicator */
+    .action-btn.mode-active {
+      animation: modePulse 1.5s infinite;
+    }
+
+    @keyframes modePulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(255,100,100,0.5); }
+      50% { box-shadow: 0 0 20px rgba(255,100,100,0.8); }
+    }
   </style>
 </head>
 <body>
@@ -452,7 +552,7 @@
     <!-- Center: Stop button & current state -->
     <div id="center-section">
       <div id="current-direction">-</div>
-      <button id="stop-btn" ontouchstart="sendStop()" onclick="sendStop()">STOP</button>
+      <button id="stop-btn" ontouchstart="emergencyStop()" onclick="emergencyStop()">STOP</button>
       <div id="emotion-grid">
         <button class="emotion-btn" onclick="setEmotion('happy')">😊</button>
         <button class="emotion-btn" onclick="setEmotion('surprised')">😮</button>
@@ -496,15 +596,23 @@
     <button class="quick-btn" onclick="speak('I love you!')">
       <span class="icon">❤️</span> Love
     </button>
-    <button class="quick-btn" onclick="speak('Let\\'s play!')">
+    <button class="quick-btn" onclick="showGamesList()">
       <span class="icon">🎮</span> Play
     </button>
-    <button class="quick-btn" onclick="speak('That\\'s funny!')">
-      <span class="icon">😂</span> Funny
-    </button>
-    <button class="quick-btn" onclick="triggerAction('honk')">
+    <button class="quick-btn" onclick="playHonk()">
       <span class="icon">📯</span> Honk
     </button>
+    <!-- Extension buttons will be added here dynamically -->
+    <div id="extension-buttons"></div>
+  </div>
+
+  <!-- Games list modal -->
+  <div id="games-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Choose a Game</h3>
+      <div id="games-list"></div>
+      <button class="modal-close" onclick="hideGamesList()">Cancel</button>
+    </div>
   </div>
 
   <!-- Control type toggle -->
@@ -520,6 +628,11 @@
     let isDancing = false;
     let danceInterval = null;
     let wakeLock = null;
+    let voiceModeActive = false;
+    let availableModes = [];
+    let currentModeIndex = -1;
+    let availableGames = [];
+    let extensionButtons = [];
 
     // DOM elements
     const statusDot = document.getElementById('status-dot');
@@ -642,6 +755,75 @@
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
+    }
+
+    // Emergency stop - stops everything and resets to happy mode
+    async function emergencyStop() {
+      console.log('EMERGENCY STOP activated');
+
+      // Stop motors immediately
+      currentDirection = null;
+      directionDisplay.textContent = 'STOPPING';
+      await fetch('/api/motor/stop', { method: 'POST' })
+        .catch(err => console.error('Motor stop failed:', err));
+
+      // Cancel any motor sequences
+      await fetch('/api/motor/cancel', { method: 'POST' })
+        .catch(err => console.error('Sequence cancel failed:', err));
+
+      // Stop dancing if active
+      if (isDancing) {
+        stopDancing();
+      }
+
+      // Reset mode to none
+      if (currentModeIndex >= 0 && availableModes.length > 0) {
+        const currentMode = availableModes[currentModeIndex];
+        send({ type: 'set_mode', mode: currentMode.id, enabled: false });
+        if (currentMode.has_overlay) {
+          send({ type: 'hide_overlay', overlay_id: currentMode.id });
+        }
+      }
+      currentModeIndex = -1;
+      const btnB = document.getElementById('btn-b');
+      btnB.classList.remove('mode-active');
+      btnB.querySelector('.label').textContent = 'MODE';
+
+      // Stop voice mode if active
+      if (voiceModeActive) {
+        voiceModeActive = false;
+        const btnY = document.getElementById('btn-y');
+        btnY.classList.remove('voice-active');
+        btnY.querySelector('.label').textContent = 'SPEAK';
+        send({ type: 'stop_voice_mode' });
+      }
+
+      // Reset to happy emotion
+      setEmotion('happy');
+
+      // Hide any overlays
+      send({ type: 'hide_overlay' });
+
+      // Close any open panels
+      send({ type: 'close_panel' });
+
+      // Broadcast full emergency stop
+      send({ type: 'emergency_stop' });
+
+      // Update display
+      directionDisplay.textContent = 'STOPPED';
+
+      // Haptic feedback - strong vibration pattern
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 100]);
+      }
+
+      // Reset display after 1 second
+      setTimeout(() => {
+        directionDisplay.textContent = '-';
+      }, 1000);
+
+      console.log('Emergency stop complete - reset to happy mode');
     }
 
     // Joystick handling
@@ -858,41 +1040,251 @@
     }
 
     function actionB() {
-      // Cycle through modes or trigger cat mode
-      speak("Meow! I'm a cat now!");
-      setEmotion('playful');
+      // Cycle through available modes
+      cycleMode();
+      if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
     }
 
     function actionX() {
-      // Tell a joke
-      const jokes = [
-        "Why don't scientists trust atoms? Because they make up everything!",
-        "What do you call a fake noodle? An impasta!",
-        "Why did the scarecrow win an award? He was outstanding in his field!",
-        "What do you call a bear with no teeth? A gummy bear!",
-        "Why don't eggs tell jokes? They'd crack each other up!",
-        "What do you call a dinosaur that crashes their car? Tyrannosaurus Wrecks!",
-        "Why did the bicycle fall over? Because it was two tired!",
-        "What do you call a fish without eyes? A fsh!",
-        "Why can't you give Elsa a balloon? Because she'll let it go!",
-        "What do you call a sleeping dinosaur? A dino-snore!"
-      ];
-      const joke = jokes[Math.floor(Math.random() * jokes.length)];
-      speak(joke);
-      setEmotion('happy');
+      // Generate an original joke via Claude API
+      generateOriginalJoke();
+      if (navigator.vibrate) navigator.vibrate(30);
     }
 
     function actionY() {
-      // Random greeting
-      const greetings = [
-        "Hello there!",
-        "Hey, what's up?",
-        "Hi friend!",
-        "Greetings, human!",
-        "Yo!"
-      ];
-      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-      speak(greeting);
+      // Toggle voice mode on E-NOR
+      toggleVoiceMode();
+      if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    }
+
+    // Toggle voice mode on the main UI
+    async function toggleVoiceMode() {
+      voiceModeActive = !voiceModeActive;
+      const btnY = document.getElementById('btn-y');
+
+      if (voiceModeActive) {
+        btnY.classList.add('voice-active');
+        btnY.querySelector('.label').textContent = 'LISTENING';
+        // Tell main UI to start voice mode
+        send({ type: 'start_voice_mode' });
+      } else {
+        btnY.classList.remove('voice-active');
+        btnY.querySelector('.label').textContent = 'SPEAK';
+        // Tell main UI to stop voice mode
+        send({ type: 'stop_voice_mode' });
+      }
+    }
+
+    // Cycle through available modes
+    async function cycleMode() {
+      // Fetch modes if we don't have them
+      if (availableModes.length === 0) {
+        try {
+          const response = await fetch('/api/extensions/modes');
+          const data = await response.json();
+          availableModes = data.modes || [];
+        } catch (e) {
+          console.error('Failed to fetch modes:', e);
+          speak("Sorry, I couldn't load the modes.");
+          return;
+        }
+      }
+
+      if (availableModes.length === 0) {
+        speak("I don't have any modes installed yet!");
+        return;
+      }
+
+      const btnB = document.getElementById('btn-b');
+
+      // If we have an active mode, deactivate it first
+      if (currentModeIndex >= 0) {
+        const currentMode = availableModes[currentModeIndex];
+        send({ type: 'set_mode', mode: currentMode.id, enabled: false });
+
+        // Hide overlays for current mode
+        if (currentMode.has_overlay) {
+          send({ type: 'hide_overlay', overlay_id: currentMode.id });
+        }
+      }
+
+      // Move to next mode (or back to no mode if at end)
+      currentModeIndex++;
+
+      if (currentModeIndex >= availableModes.length) {
+        // Reset to no mode
+        currentModeIndex = -1;
+        btnB.classList.remove('mode-active');
+        btnB.querySelector('.label').textContent = 'MODE';
+        setEmotion('happy');
+        speak("Back to normal mode!");
+        return;
+      }
+
+      // Activate the new mode
+      const newMode = availableModes[currentModeIndex];
+      btnB.classList.add('mode-active');
+      btnB.querySelector('.label').textContent = newMode.name.toUpperCase();
+
+      send({ type: 'set_mode', mode: newMode.id, enabled: true });
+
+      // Show overlays for new mode
+      if (newMode.has_overlay) {
+        send({ type: 'show_overlay', overlay_id: newMode.id });
+      }
+
+      // Announce the mode
+      speak(`${newMode.name} activated!`);
+    }
+
+    // Generate an original joke via Claude
+    async function generateOriginalJoke() {
+      setEmotion('thinking');
+      speak("Let me think of a joke...");
+
+      try {
+        const response = await fetch('/api/controller/generate-joke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setEmotion('happy');
+          speak(data.joke);
+        } else {
+          // Fallback to a random joke
+          const jokes = [
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "What do you call a bear with no teeth? A gummy bear!",
+            "Why did the bicycle fall over? Because it was two tired!"
+          ];
+          setEmotion('happy');
+          speak(jokes[Math.floor(Math.random() * jokes.length)]);
+        }
+      } catch (e) {
+        console.error('Failed to generate joke:', e);
+        setEmotion('happy');
+        speak("Why did the robot go to therapy? It had too many bugs!");
+      }
+    }
+
+    // Play honk sound through Web Audio API
+    function playHonk() {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Create a honk-like sound using oscillators
+      const now = audioCtx.currentTime;
+
+      // Main honk tone
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(200, now);
+      osc1.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+      gain1.gain.setValueAtTime(0.5, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.4);
+
+      // Secondary tone for richness
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(180, now);
+      osc2.frequency.exponentialRampToValueAtTime(140, now + 0.3);
+      gain2.gain.setValueAtTime(0.3, now);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.35);
+
+      // Also broadcast to main UI
+      send({ type: 'play_honk' });
+
+      if (navigator.vibrate) navigator.vibrate(100);
+    }
+
+    // Show games list modal
+    async function showGamesList() {
+      try {
+        const response = await fetch('/api/extensions/category/games');
+        const data = await response.json();
+        availableGames = data.extensions || [];
+
+        const gamesList = document.getElementById('games-list');
+        const modal = document.getElementById('games-modal');
+
+        if (availableGames.length === 0) {
+          gamesList.innerHTML = '<p style="color: #888; text-align: center;">No games installed yet!</p>';
+        } else {
+          gamesList.innerHTML = availableGames.map(game => `
+            <button class="game-btn" onclick="launchGame('${game.id}')">
+              <span class="emoji">${game.ui?.button_emoji || '🎮'}</span>
+              <span class="name">${game.name}</span>
+            </button>
+          `).join('');
+        }
+
+        modal.classList.remove('hidden');
+      } catch (e) {
+        console.error('Failed to fetch games:', e);
+        speak("Sorry, I couldn't load the games list.");
+      }
+    }
+
+    // Hide games list modal
+    function hideGamesList() {
+      document.getElementById('games-modal').classList.add('hidden');
+    }
+
+    // Launch a game
+    async function launchGame(gameId) {
+      hideGamesList();
+
+      try {
+        const response = await fetch('/api/controller/launch-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_id: gameId })
+        });
+
+        if (response.ok) {
+          speak("Let's play!");
+        } else {
+          speak("Sorry, I couldn't start the game.");
+        }
+      } catch (e) {
+        console.error('Failed to launch game:', e);
+        speak("Sorry, something went wrong.");
+      }
+    }
+
+    // Load extension buttons
+    async function loadExtensionButtons() {
+      try {
+        const response = await fetch('/api/controller/extension-buttons');
+        const data = await response.json();
+        extensionButtons = data.buttons || [];
+
+        const container = document.getElementById('extension-buttons');
+        container.innerHTML = extensionButtons.map(btn => `
+          <button class="quick-btn" onclick="triggerExtensionButton('${btn.extension_id}', '${btn.action}')">
+            <span class="icon">${btn.emoji || '⚡'}</span> ${btn.label}
+          </button>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load extension buttons:', e);
+      }
+    }
+
+    // Trigger an extension button action
+    function triggerExtensionButton(extensionId, action) {
+      send({ type: 'run_extension', extension_id: extensionId, action: action });
+      if (navigator.vibrate) navigator.vibrate(30);
     }
 
     // Speak function
@@ -928,6 +1320,7 @@
     // Initialize
     window.addEventListener('load', () => {
       connect();
+      loadExtensionButtons();
 
       // Recalculate joystick center on resize/orientation change
       window.addEventListener('resize', () => {
@@ -939,6 +1332,28 @@
           };
         }, 100);
       });
+
+      // Keep screen on - additional check every 30 seconds
+      setInterval(async () => {
+        if (!wakeLock && document.visibilityState === 'visible') {
+          try {
+            if ('wakeLock' in navigator) {
+              wakeLock = await navigator.wakeLock.request('screen');
+              console.log('Wake lock re-acquired via interval');
+            }
+          } catch (err) {
+            console.log('Wake lock failed:', err);
+          }
+        }
+      }, 30000);
+
+      // Prevent the screen from sleeping by keeping activity going
+      setInterval(() => {
+        // Touch the connection to keep things active
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          send({ type: 'ping' });
+        }
+      }, 60000);
     });
   </script>
 </body>
