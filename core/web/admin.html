@@ -1318,6 +1318,7 @@
 
       <div class="deploy-actions">
         <button class="btn-primary" onclick="forcePull()" id="btn-pull">Pull Latest</button>
+        <button class="btn-warning" onclick="restartService()" id="btn-restart" title="Restart the E-NOR service to apply code changes">Restart Service</button>
         <button class="btn-warning btn-small" onclick="resetConflicts()" id="btn-reset-conflicts" style="display:none">Reset Conflicts</button>
         <button class="btn-danger btn-small" onclick="forceReset()" id="btn-force-reset">Force Reset to Remote</button>
         <button class="btn-secondary btn-small" onclick="pushLogs()" id="btn-push-logs" title="Push logs to GitHub for remote debugging">Push Debug Logs</button>
@@ -2206,6 +2207,40 @@
       } finally {
         btn.textContent = originalText;
         btn.disabled = false;
+      }
+    }
+
+    async function restartService() {
+      if (!confirm('This will restart the E-NOR service. The page will briefly disconnect. Continue?')) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-restart');
+      const originalText = btn.textContent;
+      btn.textContent = 'Restarting...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/config/service/restart', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Service restarting... Page will reload in 5 seconds', 'success');
+          // Wait for service to restart, then reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+        } else {
+          showToast(result.message || 'Restart failed', 'error');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      } catch (e) {
+        // Connection error is expected during restart
+        showToast('Service restarting... Page will reload in 5 seconds', 'success');
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
       }
     }
 

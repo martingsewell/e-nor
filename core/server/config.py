@@ -845,3 +845,35 @@ async def scan_wifi_networks() -> Dict:
         return {"success": False, "networks": [], "error": "iw command not found"}
     except Exception as e:
         return {"success": False, "networks": [], "error": str(e)}
+
+
+@router.post("/service/restart")
+async def restart_service() -> Dict:
+    """Restart the e-nor systemd service"""
+    import subprocess
+
+    try:
+        # Use sudo to restart the service
+        result = subprocess.run(
+            ["sudo", "/usr/bin/systemctl", "restart", "e-nor"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            return {
+                "success": True,
+                "message": "Service restart initiated. Page will reload shortly."
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Restart failed: {result.stderr}",
+                "hint": "Ensure passwordless sudo is configured for systemctl"
+            }
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "message": "Restart command timed out"}
+    except Exception as e:
+        return {"success": False, "message": f"Error: {str(e)}"}
