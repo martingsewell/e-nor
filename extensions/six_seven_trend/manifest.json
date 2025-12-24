@@ -1,0 +1,32 @@
+{
+  "id": "six_seven_trend",
+  "name": "Six Seven Trend",
+  "description": "When you say 'six seven,' I fill my screen with sixes and sevens everywhere, do a cool dance move, and say 'six seven' repeatedly!",
+  "version": "1.0.0",
+  "author": "Ronnie",
+  "type": "feature",
+  "category": "custom4",
+  "enabled": true,
+  "voice_triggers": [
+    {
+      "phrases": [
+        "six seven",
+        "six seven trend",
+        "show me six seven",
+        "do six seven",
+        "six and seven"
+      ],
+      "action": "activate_six_seven_trend",
+      "handler": "handle_action"
+    }
+  ],
+  "ui": {
+    "button_label": "Six Seven",
+    "button_emoji": "6️⃣",
+    "button_color": "#ff6b6b"
+  },
+  "provides": {
+    "handler": true,
+    "ui": true
+  }
+}
