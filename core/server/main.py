@@ -57,6 +57,8 @@ robot_state = {
     "disco_mode": False,
     "active_mode": None,  # For extension modes like "cat_mode"
     "active_overlays": [],  # For face overlays
+    "active_panel": None,  # Current open panel (for E-NOR awareness)
+    "game_active": False,  # True when a game is running (inhibits motor movement)
 }
 
 # Directory paths
@@ -203,6 +205,24 @@ async def handle_message(data: dict, sender: WebSocket):
             await broadcast({"type": "speak", "text": text})
             print(f"Speak: {text}")
 
+    elif msg_type == "panel_opened":
+        # Track which panel/extension is currently open
+        robot_state["active_panel"] = {
+            "panel_id": data.get("panelId"),
+            "extension_id": data.get("extensionId"),
+            "type": data.get("panelType")
+        }
+        # If it's a game, set game_active to inhibit motor movement
+        if data.get("panelType") == "game":
+            robot_state["game_active"] = True
+        print(f"Panel opened: {data.get('extensionId')} ({data.get('panelType')})")
+
+    elif msg_type == "panel_closed":
+        # Clear active panel state
+        robot_state["active_panel"] = None
+        robot_state["game_active"] = False
+        print(f"Panel closed: {data.get('extensionId')}")
+
 
 async def broadcast(message: dict):
     """Broadcast a message to all connected WebSocket clients"""
@@ -217,3 +237,27 @@ async def broadcast(message: dict):
 def get_broadcast_func():
     """Get the broadcast function for use by extensions"""
     return broadcast
+
+
+def get_robot_state():
+    """Get current robot state (for use by chat module)"""
+    return robot_state
+
+
+def is_game_active():
+    """Check if a game is currently active (for motor inhibition)"""
+    return robot_state.get("game_active", False)
+
+
+def get_active_panel():
+    """Get the currently active panel info"""
+    return robot_state.get("active_panel")
+
+
+@app.get("/api/panel-state")
+async def get_panel_state():
+    """Get current panel state for E-NOR awareness"""
+    return {
+        "active_panel": robot_state.get("active_panel"),
+        "game_active": robot_state.get("game_active", False)
+    }

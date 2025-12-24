@@ -94,7 +94,7 @@ async def handle_action(action: str, params: dict = None) -> dict:
             <div class="number" style="left: 85%; animation-duration: 3s; animation-delay: 8s;">6</div>
             <div class="number" style="left: 95%; animation-duration: 4s; animation-delay: 8.5s;">7</div>
         </div>
-        """, panel_id="six_seven_overlay")
+        """, panel_id="six_seven_overlay", panel_type="action")
         
         # Store that we're active
         api.set_data("active", True)

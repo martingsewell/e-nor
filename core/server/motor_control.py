@@ -29,6 +29,24 @@ from .config import load_config, get_config_value
 
 router = APIRouter(prefix="/api/motor", tags=["motor"])
 
+
+def is_game_active() -> bool:
+    """Check if a game is currently active (motors should be inhibited)"""
+    try:
+        from .main import is_game_active as check_game_active
+        return check_game_active()
+    except ImportError:
+        return False
+
+
+def check_game_inhibit():
+    """Raise exception if motors are inhibited due to game being active"""
+    if is_game_active():
+        raise HTTPException(
+            status_code=409,
+            detail="Motors are inhibited while a game is running. Close the game first or use the controller to play the game."
+        )
+
 # Track if a movement sequence is running
 _sequence_running = False
 _sequence_cancel = False
@@ -54,6 +72,7 @@ async def get_motor_status():
 @router.post("/forward")
 async def motor_forward(request: SpeedRequest = None):
     """Move forward - both motors forward"""
+    check_game_inhibit()  # Inhibit if game is running
     try:
         speed = request.speed if request else None
         forward(speed)
@@ -70,6 +89,7 @@ async def motor_forward(request: SpeedRequest = None):
 @router.post("/backward")
 async def motor_backward(request: SpeedRequest = None):
     """Move backward - both motors backward"""
+    check_game_inhibit()  # Inhibit if game is running
     try:
         speed = request.speed if request else None
         backward(speed)
@@ -86,6 +106,7 @@ async def motor_backward(request: SpeedRequest = None):
 @router.post("/left")
 async def motor_left(request: SpeedRequest = None):
     """Turn left - pivot turn"""
+    check_game_inhibit()  # Inhibit if game is running
     try:
         speed = request.speed if request else None
         left(speed)
@@ -102,6 +123,7 @@ async def motor_left(request: SpeedRequest = None):
 @router.post("/right")
 async def motor_right(request: SpeedRequest = None):
     """Turn right - pivot turn"""
+    check_game_inhibit()  # Inhibit if game is running
     try:
         speed = request.speed if request else None
         right(speed)
@@ -245,6 +267,8 @@ async def motor_move(request: MoveRequest):
     """Move forward or backward for a distance or duration"""
     global _sequence_running, _sequence_cancel
 
+    check_game_inhibit()  # Inhibit if game is running
+
     if _sequence_running:
         raise HTTPException(status_code=409, detail="A movement sequence is already running")
 
@@ -289,6 +313,8 @@ async def motor_turn(request: TurnRequest):
     """Turn left or right for a number of degrees or duration"""
     global _sequence_running, _sequence_cancel
 
+    check_game_inhibit()  # Inhibit if game is running
+
     if _sequence_running:
         raise HTTPException(status_code=409, detail="A movement sequence is already running")
 
@@ -332,6 +358,8 @@ async def motor_turn(request: TurnRequest):
 async def motor_sequence(request: SequenceRequest):
     """Execute a sequence of movements"""
     global _sequence_running, _sequence_cancel
+
+    check_game_inhibit()  # Inhibit if game is running
 
     if _sequence_running:
         raise HTTPException(status_code=409, detail="A movement sequence is already running")

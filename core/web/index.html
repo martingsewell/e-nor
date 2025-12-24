@@ -271,27 +271,54 @@
       left: 0;
     }
 
-    /* Extension panel container */
+    /* Extension panel container - FULLSCREEN for mobile */
     #extension-panel-container {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       z-index: 200;
       display: none;
-      max-width: 90%;
-      max-height: 80%;
-      overflow: auto;
+      overflow: hidden;
     }
     #extension-panel-container.visible {
-      display: block;
+      display: flex;
+      flex-direction: column;
     }
     #extension-panel-container .panel-content {
-      background: rgba(10, 20, 40, 0.95);
-      border: 2px solid #00ffff;
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 10px 40px rgba(0, 255, 255, 0.3);
+      flex: 1;
+      background: rgba(10, 20, 40, 0.98);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* Close button for extension panels */
+    #extension-panel-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 44px;
+      height: 44px;
+      background: rgba(255, 50, 50, 0.9);
+      border: 2px solid #ff6666;
+      border-radius: 50%;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 210;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(255, 50, 50, 0.5);
+      transition: transform 0.2s, background 0.2s;
+    }
+    #extension-panel-close:hover {
+      transform: scale(1.1);
+      background: rgba(255, 80, 80, 1);
+    }
+    #extension-panel-close:active {
+      transform: scale(0.95);
     }
 
     /* Mode selector in quick actions */
@@ -2063,8 +2090,9 @@
     </div>
   </div>
 
-  <!-- Extension Panel Container -->
+  <!-- Extension Panel Container - Fullscreen mobile-first -->
   <div id="extension-panel-container">
+    <button id="extension-panel-close" onclick="closeCurrentPanel()" aria-label="Close">&times;</button>
     <div class="panel-content" id="extension-panel-content">
       <!-- Extension panels will be inserted here -->
     </div>
@@ -2318,8 +2346,8 @@
           // Hide face overlay
           hideFaceOverlay(msg.overlay_id, msg.extension_id);
         } else if (msg.type === 'show_panel') {
-          // Show extension panel
-          showExtensionPanel(msg.html, msg.panel_id);
+          // Show extension panel (fullscreen, mobile-first)
+          showExtensionPanel(msg.html, msg.panel_id, msg.extension_id, msg.panel_type);
         } else if (msg.type === 'hide_panel') {
           // Hide extension panel
           hideExtensionPanel(msg.panel_id);
@@ -5091,16 +5119,50 @@
 
     // ==================== Extension Panels ====================
 
-    // Show an extension panel
-    function showExtensionPanel(html, panelId) {
+    // Current panel state - E-NOR uses this to know what's open
+    let currentPanel = {
+      isOpen: false,
+      panelId: null,
+      extensionId: null,
+      type: null  // 'game', 'tool', 'feature', 'action', etc.
+    };
+
+    // Get current panel state (for E-NOR awareness)
+    function getCurrentPanel() {
+      return { ...currentPanel };
+    }
+
+    // Show an extension panel (fullscreen, mobile-first)
+    function showExtensionPanel(html, panelId, extensionId, panelType) {
       const container = document.getElementById('extension-panel-container');
       const content = document.getElementById('extension-panel-content');
       if (!container || !content) return;
 
       content.innerHTML = html;
       content.dataset.panelId = panelId || 'default';
+      content.dataset.extensionId = extensionId || '';
+      content.dataset.panelType = panelType || 'feature';
       container.classList.add('visible');
-      console.log('Panel shown:', panelId);
+
+      // Update current panel state
+      currentPanel = {
+        isOpen: true,
+        panelId: panelId || 'default',
+        extensionId: extensionId || null,
+        type: panelType || 'feature'
+      };
+
+      // Notify server that a panel is now open (for voice awareness)
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'panel_opened',
+          panelId: currentPanel.panelId,
+          extensionId: currentPanel.extensionId,
+          panelType: currentPanel.type
+        }));
+      }
+
+      console.log('Panel shown:', panelId, '(type:', panelType, ')');
     }
 
     // Hide extension panel
@@ -5111,10 +5173,49 @@
 
       // Only hide if panel ID matches or no ID specified
       if (!panelId || content.dataset.panelId === panelId) {
+        const closedPanelId = content.dataset.panelId;
+        const closedExtensionId = content.dataset.extensionId;
+
         container.classList.remove('visible');
         content.innerHTML = '';
         delete content.dataset.panelId;
+        delete content.dataset.extensionId;
+        delete content.dataset.panelType;
+
+        // Update current panel state
+        currentPanel = {
+          isOpen: false,
+          panelId: null,
+          extensionId: null,
+          type: null
+        };
+
+        // Notify server that panel is closed
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'panel_closed',
+            panelId: closedPanelId,
+            extensionId: closedExtensionId
+          }));
+        }
+
         console.log('Panel hidden:', panelId);
+      }
+    }
+
+    // Close current panel (called by close button)
+    function closeCurrentPanel() {
+      if (currentPanel.isOpen) {
+        // If it's a game or extension with a stop action, trigger it
+        if (currentPanel.extensionId) {
+          // Send a message to stop the extension gracefully
+          send({
+            type: 'chat',
+            message: `close ${currentPanel.extensionId.replace(/_/g, ' ')}`,
+            silent: true  // Don't speak this command
+          });
+        }
+        hideExtensionPanel(currentPanel.panelId);
       }
     }
 

@@ -97,20 +97,29 @@ class ExtensionAPI:
 
     # ==================== UI ====================
 
-    async def show_panel(self, html: str, panel_id: str = None) -> None:
-        """Display a custom UI panel"""
+    async def show_panel(self, html: str, panel_id: str = None, panel_type: str = None) -> None:
+        """
+        Display a custom UI panel (fullscreen, mobile-first).
+
+        Args:
+            html: The HTML content for the panel
+            panel_id: Optional ID for the panel (defaults to extension_id_panel)
+            panel_type: Type of panel ('game', 'tool', 'feature', 'action') - used for E-NOR awareness
+        """
         await self.broadcast({
             "type": "show_panel",
             "html": html,
             "panel_id": panel_id or f"{self.extension_id}_panel",
-            "extension_id": self.extension_id
+            "extension_id": self.extension_id,
+            "panel_type": panel_type or "feature"
         })
 
     async def hide_panel(self, panel_id: str = None) -> None:
         """Hide a custom UI panel"""
         await self.broadcast({
             "type": "hide_panel",
-            "panel_id": panel_id or f"{self.extension_id}_panel"
+            "panel_id": panel_id or f"{self.extension_id}_panel",
+            "extension_id": self.extension_id
         })
 
     async def update_panel(self, updates: Dict, panel_id: str = None) -> None:

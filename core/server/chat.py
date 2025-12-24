@@ -201,6 +201,35 @@ def get_installed_powers_for_prompt() -> str:
     return text
 
 
+def get_active_panel_context() -> str:
+    """Get context about the currently open panel/app for E-NOR awareness"""
+    try:
+        from .main import get_active_panel
+        panel = get_active_panel()
+
+        if not panel:
+            return ""
+
+        extension_id = panel.get("extension_id", "")
+        panel_type = panel.get("type", "")
+
+        if not extension_id:
+            return ""
+
+        text = f"""
+
+CURRENT SCREEN STATE:
+- There is currently a {panel_type} open on screen: {extension_id.replace('_', ' ').title()}
+- The user can see this app/panel and may ask questions about it or want to close it
+- If they say "close this", "exit", "go back", "stop", etc. - use the close_panel action
+- You can still hear and respond to the user while apps are open
+- If a game is running, the E-NOR controller is being used to control the game (not motors)
+"""
+        return text
+    except Exception:
+        return ""
+
+
 def build_system_prompt() -> str:
     """Build the system prompt dynamically from config"""
     config = load_config()
@@ -340,6 +369,11 @@ Available actions you can include in the "actions" array:
     - Tools: use action names like "show_guide", "calculate", "get_tip", "help"
     - Actions/trends: use "start_X" to trigger the action (e.g., start_six_seven_trend)
     - You can also call tools programmatically when YOU need help with a task (like math calculations)
+
+14. Close the current panel/app (when user wants to close what's on screen):
+    {{"type": "close_panel"}}
+    - Use when user says "close this", "close the game", "exit", "go back", "stop", etc.
+    - Will close whatever extension panel is currently open
 
 Kid-friendly language:
 - Call extensions "powers", "abilities", "tricks", or "things I can do"
@@ -555,6 +589,13 @@ User: "What's 247 times 83?" (if you have a math_helper tool installed)
   "actions": [{{"type": "run_extension", "extension_id": "math_helper", "action": "calculate", "params": {{"expression": "247 * 83"}}}}]
 }}
 
+User: "Close this" / "Exit" / "Go back" / "Stop the game"
+{{
+  "message": "Okay, closing that!",
+  "emotion": "happy",
+  "actions": [{{"type": "close_panel"}}]
+}}
+
 Remember:
 - ONLY output valid JSON, nothing else
 - Keep messages SHORT for voice (1-2 sentences)
@@ -588,7 +629,10 @@ CURRENT DATE AND TIME: {current_datetime}
     # Add installed powers/extensions
     installed_powers = get_installed_powers_for_prompt()
 
-    return system_prompt + datetime_context + memories + pending_requests + installed_powers
+    # Add current panel context (E-NOR awareness)
+    panel_context = get_active_panel_context()
+
+    return system_prompt + datetime_context + memories + pending_requests + installed_powers + panel_context
 
 
 class ChatMessage(BaseModel):
@@ -991,6 +1035,15 @@ async def handle_actions(actions: List[dict], original_message: str = "") -> dic
                     "success": False,
                     "error": "Missing extension_id or action"
                 })
+
+        elif action_type == "close_panel":
+            # Close the current panel/app
+            await broadcast_action({
+                "type": "hide_panel",
+                "panel_id": None  # Close any open panel
+            })
+            results["panel_closed"] = True
+            print("Panel closed via voice command")
 
     return results
 

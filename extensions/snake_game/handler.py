@@ -50,9 +50,9 @@ async def handle_action(action: str, params: dict = None) -> dict:
         if ui_file.exists():
             with open(ui_file, 'r') as f:
                 ui_content = f.read()
-            
-            # Show the game panel
-            await api.show_panel(ui_content)
+
+            # Show the game panel (fullscreen, mobile-first, type=game)
+            await api.show_panel(ui_content, panel_type="game")
             
             # Speak encouraging start message
             start_message = random.choice(SCORE_MESSAGES["start"])
