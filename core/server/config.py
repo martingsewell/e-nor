@@ -67,6 +67,10 @@ DEFAULT_CONFIG = {
         "gender": "female",
         "rate": "1.0",
         "pitch": "1.0"
+    },
+    "wifi": {
+        "networks": [],
+        "country": "GB"
     }
 }
 
@@ -544,3 +548,323 @@ async def update_motor_calibration(calibration: MotorCalibrationConfig) -> Dict:
 
     success = save_config(config)
     return {"success": success, "motor_calibration": config["motor_calibration"]}
+
+
+# WiFi Network Models
+class WiFiNetwork(BaseModel):
+    ssid: str
+    password: str = ""
+    priority: int = 1
+    enabled: bool = True
+
+
+class WiFiConfig(BaseModel):
+    networks: List[WiFiNetwork]
+    country: str = "GB"
+
+
+# WiFi Endpoints
+
+@router.get("/wifi")
+async def get_wifi_config() -> Dict:
+    """Get WiFi configuration (passwords hidden)"""
+    config = load_config()
+    wifi = config.get("wifi", {"networks": [], "country": "GB"})
+
+    # Hide passwords in response
+    networks = []
+    for net in wifi.get("networks", []):
+        networks.append({
+            "ssid": net.get("ssid", ""),
+            "priority": net.get("priority", 1),
+            "enabled": net.get("enabled", True),
+            "has_password": bool(net.get("password", ""))
+        })
+
+    return {
+        "networks": networks,
+        "country": wifi.get("country", "GB")
+    }
+
+
+@router.put("/wifi")
+async def update_wifi_config(wifi_config: WiFiConfig) -> Dict:
+    """Update WiFi configuration"""
+    config = load_config()
+
+    # Validate SSIDs (max 32 chars, non-empty)
+    networks = []
+    for net in wifi_config.networks:
+        if not net.ssid or len(net.ssid) > 32:
+            raise HTTPException(status_code=400, detail=f"Invalid SSID: {net.ssid}")
+        networks.append({
+            "ssid": net.ssid.strip(),
+            "password": net.password,
+            "priority": max(1, min(10, net.priority)),
+            "enabled": net.enabled
+        })
+
+    # Sort by priority (higher priority first)
+    networks.sort(key=lambda x: x["priority"], reverse=True)
+
+    config["wifi"] = {
+        "networks": networks,
+        "country": wifi_config.country.upper()[:2] if wifi_config.country else "GB"
+    }
+
+    success = save_config(config)
+    return {"success": success, "message": "WiFi configuration saved"}
+
+
+@router.post("/wifi/apply")
+async def apply_wifi_config() -> Dict:
+    """Apply WiFi configuration to wpa_supplicant and reconnect"""
+    import subprocess
+    import os
+
+    config = load_config()
+    wifi = config.get("wifi", {"networks": [], "country": "GB"})
+    networks = wifi.get("networks", [])
+    country = wifi.get("country", "GB")
+
+    if not networks:
+        return {"success": False, "message": "No WiFi networks configured"}
+
+    # Build wpa_supplicant.conf content
+    wpa_content = f"""ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country={country}
+
+"""
+
+    for net in networks:
+        if not net.get("enabled", True):
+            continue
+        ssid = net.get("ssid", "")
+        password = net.get("password", "")
+        priority = net.get("priority", 1)
+
+        if password:
+            # WPA/WPA2 network
+            wpa_content += f"""network={{
+    ssid="{ssid}"
+    psk="{password}"
+    priority={priority}
+    key_mgmt=WPA-PSK
+}}
+
+"""
+        else:
+            # Open network
+            wpa_content += f"""network={{
+    ssid="{ssid}"
+    key_mgmt=NONE
+    priority={priority}
+}}
+
+"""
+
+    # Write to temporary file first
+    temp_file = "/tmp/wpa_supplicant.conf.new"
+    try:
+        with open(temp_file, 'w') as f:
+            f.write(wpa_content)
+
+        # Check if we're on the Pi (has wpa_supplicant)
+        wpa_conf_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
+
+        if os.path.exists("/etc/wpa_supplicant"):
+            # Try to copy with sudo (may need passwordless sudo configured)
+            result = subprocess.run(
+                ["sudo", "cp", temp_file, wpa_conf_path],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "message": f"Failed to write config: {result.stderr}",
+                    "hint": "Ensure passwordless sudo is configured for the enor user"
+                }
+
+            # Reconfigure wlan0
+            result = subprocess.run(
+                ["sudo", "wpa_cli", "-i", "wlan0", "reconfigure"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                return {
+                    "success": True,
+                    "message": "WiFi configuration applied. Reconnecting...",
+                    "networks_configured": len([n for n in networks if n.get("enabled", True)])
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Config written but reconfigure failed: {result.stderr}"
+                }
+        else:
+            return {
+                "success": False,
+                "message": "wpa_supplicant not found (not on Raspberry Pi?)",
+                "config_preview": wpa_content[:500] + "..."
+            }
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "message": "Command timed out"}
+    except Exception as e:
+        return {"success": False, "message": f"Error: {str(e)}"}
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass
+
+
+@router.get("/wifi/status")
+async def get_wifi_status() -> Dict:
+    """Get current WiFi connection status"""
+    import subprocess
+
+    try:
+        # Get current connection info
+        result = subprocess.run(
+            ["iwconfig", "wlan0"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if result.returncode != 0:
+            # Try ip command as fallback
+            result = subprocess.run(
+                ["ip", "addr", "show", "wlan0"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0:
+                return {
+                    "connected": False,
+                    "ssid": None,
+                    "signal": None,
+                    "ip_address": None,
+                    "error": "Could not get WiFi status"
+                }
+
+        output = result.stdout
+
+        # Parse SSID
+        ssid = None
+        if 'ESSID:"' in output:
+            start = output.find('ESSID:"') + 7
+            end = output.find('"', start)
+            ssid = output[start:end] if end > start else None
+
+        # Parse signal quality
+        signal = None
+        if 'Signal level=' in output:
+            start = output.find('Signal level=') + 13
+            end = output.find(' ', start)
+            signal = output[start:end] if end > start else None
+        elif 'Link Quality=' in output:
+            start = output.find('Link Quality=') + 13
+            end = output.find(' ', start)
+            signal = output[start:end] if end > start else None
+
+        # Get IP address
+        ip_result = subprocess.run(
+            ["hostname", "-I"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        ip_address = ip_result.stdout.strip().split()[0] if ip_result.stdout.strip() else None
+
+        return {
+            "connected": ssid is not None and ssid != "off/any",
+            "ssid": ssid if ssid != "off/any" else None,
+            "signal": signal,
+            "ip_address": ip_address
+        }
+
+    except subprocess.TimeoutExpired:
+        return {"connected": False, "error": "Command timed out"}
+    except FileNotFoundError:
+        return {"connected": False, "error": "iwconfig not found (not on Pi?)"}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+@router.get("/wifi/scan")
+async def scan_wifi_networks() -> Dict:
+    """Scan for available WiFi networks"""
+    import subprocess
+
+    try:
+        # Trigger a scan
+        subprocess.run(
+            ["sudo", "iw", "dev", "wlan0", "scan", "trigger"],
+            capture_output=True,
+            timeout=5
+        )
+
+        # Wait a moment for scan to complete
+        import time
+        time.sleep(2)
+
+        # Get scan results
+        result = subprocess.run(
+            ["sudo", "iw", "dev", "wlan0", "scan"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return {"success": False, "networks": [], "error": result.stderr}
+
+        # Parse scan results
+        networks = []
+        current = {}
+
+        for line in result.stdout.split('\n'):
+            line = line.strip()
+            if line.startswith('BSS '):
+                if current.get('ssid'):
+                    networks.append(current)
+                current = {}
+            elif line.startswith('SSID: '):
+                current['ssid'] = line[6:]
+            elif line.startswith('signal: '):
+                current['signal'] = line[8:]
+            elif 'WPA' in line or 'RSN' in line:
+                current['security'] = 'WPA'
+
+        if current.get('ssid'):
+            networks.append(current)
+
+        # Deduplicate by SSID
+        seen = set()
+        unique_networks = []
+        for net in networks:
+            if net['ssid'] and net['ssid'] not in seen:
+                seen.add(net['ssid'])
+                unique_networks.append(net)
+
+        return {"success": True, "networks": unique_networks}
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "networks": [], "error": "Scan timed out"}
+    except FileNotFoundError:
+        return {"success": False, "networks": [], "error": "iw command not found"}
+    except Exception as e:
+        return {"success": False, "networks": [], "error": str(e)}
