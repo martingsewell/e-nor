@@ -127,12 +127,99 @@ extensions/my_feature/
 Extensions can use the `ExtensionAPI` class:
 
 ```python
-api.speak(text)          # Make robot speak
-api.set_emotion(name)    # Change expression
-api.show_face_overlay()  # Add visual overlay
-api.get_data(key)        # Load saved data
-api.set_data(key, value) # Save data
-api.ask_claude(prompt)   # Use Claude for logic
+# Communication
+api.speak(text)              # Make robot speak (text-to-speech)
+api.set_emotion(name)        # Change expression (happy, sad, excited, etc.)
+api.broadcast(message)       # Send WebSocket message to all clients
+
+# Visual UI
+api.show_panel(html)         # Show a fullscreen HTML panel
+api.hide_panel()             # Hide the panel
+api.show_face_overlay()      # Add visual overlay to face
+
+# Data persistence
+api.get_data(key)            # Load saved data
+api.set_data(key, value)     # Save data (persisted to disk)
+
+# AI integration
+api.ask_claude(prompt)       # Use Claude for logic/decisions
+
+# Motor control and dancing
+api.move(action, params)     # Send movement command
+api.start_dance(duration)    # Start dancing (moves side to side like disco)
+api.stop_dance()             # Stop dancing
+
+# Emergency stop check (use in loops)
+api.is_stopped()             # Returns True if emergency stop was triggered
+api.clear_stop_flag()        # Clear stop flag when starting new action
+```
+
+### Motor Control for Extensions
+
+Extensions can make E-NOR move and dance! Here's how:
+
+```python
+# In your handler.py:
+import asyncio
+from core.server.extension_api import ExtensionAPI
+
+api = ExtensionAPI("my_extension", Path(__file__).parent)
+
+async def handle_action(action: str, params: dict = None) -> dict:
+    if action == "start_dancing":
+        # Start a dance routine (5 seconds by default)
+        await api.start_dance(duration=5.0)
+        return {"success": True, "message": "Dancing!"}
+
+    elif action == "long_dance":
+        # For longer dances, run in background task
+        asyncio.create_task(dance_loop())
+        return {"success": True}
+
+async def dance_loop():
+    """Keep dancing while active"""
+    api.set_data("dancing", True)
+    while api.get_data("dancing", False) and not api.is_stopped():
+        await api.start_dance(duration=10.0)
+        await asyncio.sleep(1)  # Brief pause between dance sessions
+    await api.stop_dance()
+```
+
+**Important notes for extensions with loops:**
+- Always check `api.is_stopped()` in your loops
+- Call `api.clear_stop_flag()` when starting a new action
+- The emergency stop button will stop all running extensions
+
+### Game Extensions
+
+For game extensions, use `ui_components` in your manifest.json:
+
+```json
+{
+  "type": "game",
+  "ui_components": [
+    {
+      "id": "my_game_panel",
+      "type": "game",
+      "file": "ui.html"
+    }
+  ]
+}
+```
+
+Games can receive controller input by listening for messages:
+
+```javascript
+// In your game's ui.html
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'game_control') {
+        // direction: 'up', 'down', 'left', 'right'
+        handleDirection(event.data.direction);
+    } else if (event.data.type === 'game_action') {
+        // action: 'restart', 'close'
+        handleAction(event.data.action);
+    }
+});
 ```
 
 ## Voice Pipeline Rules

@@ -275,6 +275,34 @@ async def handle_message(data: dict, sender: WebSocket):
         await broadcast(data)
         print(f"Extension action: {data.get('extension_id')} - {data.get('action')}")
 
+    elif msg_type == "game_control":
+        # Forward game control commands (direction, restart, etc.)
+        await broadcast(data)
+
+    elif msg_type == "game_action":
+        # Forward game action commands (restart, close, etc.)
+        await broadcast(data)
+
+    elif msg_type == "dance_move":
+        # Forward dance move from extension to motor control
+        direction = data.get("direction", "stop")
+        speed = data.get("speed", 0)
+
+        if direction == "stop":
+            # Stop motors
+            try:
+                from .motor_control import stop_motors
+                await stop_motors()
+            except Exception as e:
+                print(f"Motor stop error: {e}")
+        else:
+            # Send motor command
+            try:
+                from .motor_control import set_direction
+                await set_direction(direction, speed)
+            except Exception as e:
+                print(f"Motor move error: {e}")
+
 
 async def broadcast(message: dict):
     """Broadcast a message to all connected WebSocket clients"""

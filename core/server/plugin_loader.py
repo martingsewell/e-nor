@@ -601,7 +601,8 @@ async def get_modes() -> Dict:
     """Get all mode extensions for the mode selector UI"""
     modes = []
     for ext in get_enabled_extensions():
-        if ext.extension_type == "mode":
+        # Check both extension_type and category for modes
+        if ext.extension_type == "mode" or ext.category == "modes":
             # Get UI config from manifest if available
             ui_config = ext.manifest.get("ui", {})
             modes.append({
@@ -617,6 +618,33 @@ async def get_modes() -> Dict:
                 "enabled": ext.enabled
             })
     return {"modes": modes, "total": len(modes)}
+
+
+@router.get("/games")
+async def get_games() -> Dict:
+    """Get all game extensions for the games list UI"""
+    games = []
+    for ext in get_enabled_extensions():
+        # Check both extension_type and category for games
+        if ext.extension_type == "game" or ext.category == "games":
+            # Get UI config from manifest if available
+            ui_config = ext.manifest.get("ui", {})
+            ui_components = ext.manifest.get("ui_components", [])
+            # Find the game panel
+            game_panel = next((c for c in ui_components if c.get("type") == "game"), None)
+            games.append({
+                "id": ext.id,
+                "name": ext.name,
+                "description": ext.description,
+                "button_label": ui_config.get("button_label", ext.name.replace(" Game", "")),
+                "button_emoji": ui_config.get("button_emoji", "🎮"),
+                "button_color": ui_config.get("button_color", "#00ffff"),
+                "has_ui": game_panel is not None,
+                "panel_id": game_panel.get("id") if game_panel else None,
+                "panel_file": game_panel.get("file") if game_panel else None,
+                "enabled": ext.enabled
+            })
+    return {"games": games, "total": len(games)}
 
 
 @router.post("/reload")

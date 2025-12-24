@@ -215,14 +215,31 @@
             {x: 10, y: 10},
         ];
         let food = {};
-        let dx = 0;
+        let dx = 1;  // Start moving right automatically
         let dy = 0;
         let score = 0;
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let gameRunning = true;
+        let gameStarted = true;  // Game starts automatically
 
         // Initialize high score display
         highScoreElement.textContent = highScore;
+
+        // Listen for controller commands from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'game_control') {
+                const direction = event.data.direction;
+                if (direction) {
+                    changeDirection(direction);
+                }
+            } else if (event.data && event.data.type === 'game_action') {
+                if (event.data.action === 'restart') {
+                    restartGame();
+                } else if (event.data.action === 'close') {
+                    closeGame();
+                }
+            }
+        });
 
         // Game functions
         function generateFood() {

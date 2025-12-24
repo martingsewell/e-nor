@@ -2371,6 +2371,9 @@
         } else if (msg.type === 'play_honk') {
           // Play honk sound
           playHonkSound();
+        } else if (msg.type === 'play_sound') {
+          // Play sound from library
+          playSoundEffect(msg.sound);
         } else if (msg.type === 'emergency_stop') {
           // Full emergency stop - reset everything
           handleEmergencyStop(msg.state);
@@ -2387,8 +2390,20 @@
           } else {
             deactivateMode(msg.mode);
           }
+        } else if (msg.type === 'game_control') {
+          // Forward game control to any active game panel
+          forwardToGamePanel(msg);
+        } else if (msg.type === 'game_action') {
+          // Forward game action to any active game panel
+          forwardToGamePanel(msg);
         }
       };
+    }
+
+    // Forward messages to active game panels
+    function forwardToGamePanel(msg) {
+      // Post message to window - inline game scripts listen for this
+      window.postMessage(msg, '*');
     }
 
     function send(data) {
@@ -3793,42 +3808,167 @@
       }
     }
 
-    // Play honk sound using Web Audio API
-    function playHonkSound() {
+    // Sound library - matching the controller sounds
+    const soundLibrary = {
+      honk: (ctx) => {
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(349, now);
+        gain1.gain.setValueAtTime(0.6, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.6);
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(261, now);
+        gain2.gain.setValueAtTime(0.5, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now);
+        osc2.stop(now + 0.6);
+      },
+      boing: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      },
+      fart: (ctx) => {
+        const now = ctx.currentTime;
+        const bufferSize = ctx.sampleRate * 0.5;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(150, now);
+        filter.frequency.linearRampToValueAtTime(80, now + 0.4);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(now);
+      },
+      pop: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      },
+      ding: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      },
+      whoosh: (ctx) => {
+        const now = ctx.currentTime;
+        const bufferSize = ctx.sampleRate * 0.3;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(200, now);
+        filter.frequency.exponentialRampToValueAtTime(2000, now + 0.15);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+        filter.Q.value = 1;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(now);
+      },
+      buzz: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.setValueAtTime(0.3, now + 0.1);
+        gain.gain.setValueAtTime(0, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      },
+      laser: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1500, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    };
+
+    // Play a sound from the library
+    function playSoundEffect(soundName) {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const now = audioCtx.currentTime;
-
-        // Main honk tone
-        const osc1 = audioCtx.createOscillator();
-        const gain1 = audioCtx.createGain();
-        osc1.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(200, now);
-        osc1.frequency.exponentialRampToValueAtTime(150, now + 0.3);
-        gain1.gain.setValueAtTime(0.5, now);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc1.connect(gain1);
-        gain1.connect(audioCtx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.4);
-
-        // Secondary tone for richness
-        const osc2 = audioCtx.createOscillator();
-        const gain2 = audioCtx.createGain();
-        osc2.type = 'square';
-        osc2.frequency.setValueAtTime(180, now);
-        osc2.frequency.exponentialRampToValueAtTime(140, now + 0.3);
-        gain2.gain.setValueAtTime(0.3, now);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-        osc2.connect(gain2);
-        gain2.connect(audioCtx.destination);
-        osc2.start(now);
-        osc2.stop(now + 0.35);
-
-        console.log('Honk sound played');
+        if (soundLibrary[soundName]) {
+          soundLibrary[soundName](audioCtx);
+          console.log(`Sound played: ${soundName}`);
+        }
       } catch (e) {
-        console.error('Failed to play honk:', e);
+        console.error(`Failed to play sound ${soundName}:`, e);
       }
+    }
+
+    // Play honk sound (backwards compatibility)
+    function playHonkSound() {
+      playSoundEffect('honk');
     }
 
     // Handle emergency stop
@@ -3883,10 +4023,26 @@
     // Close all open panels
     function closeAllPanels() {
       const panelContainer = document.getElementById('extension-panel-container');
+      const panelContent = document.getElementById('extension-panel-content');
+
       if (panelContainer) {
-        panelContainer.innerHTML = '';
-        panelContainer.classList.add('hidden');
+        panelContainer.classList.remove('visible');
       }
+
+      if (panelContent) {
+        panelContent.innerHTML = '';
+        delete panelContent.dataset.panelId;
+        delete panelContent.dataset.extensionId;
+        delete panelContent.dataset.panelType;
+      }
+
+      // Reset current panel state
+      currentPanel = {
+        isOpen: false,
+        panelId: null,
+        extensionId: null,
+        type: null
+      };
 
       // Notify server that panel is closed
       send({ type: 'panel_closed', extensionId: null });

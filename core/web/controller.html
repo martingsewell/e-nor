@@ -602,6 +602,9 @@
     <button class="quick-btn" onclick="playHonk()">
       <span class="icon">📯</span> Honk
     </button>
+    <button class="quick-btn" onclick="showSoundsList()">
+      <span class="icon">🔊</span> Sounds
+    </button>
     <!-- Extension buttons will be added here dynamically -->
     <div id="extension-buttons"></div>
   </div>
@@ -633,6 +636,9 @@
     let currentModeIndex = -1;
     let availableGames = [];
     let extensionButtons = [];
+    let gameActive = false;  // Track if a game is currently running
+    let activeGameId = null;
+    let lastGameDirection = null;  // Prevent sending duplicate directions
 
     // DOM elements
     const statusDot = document.getElementById('status-dot');
@@ -807,6 +813,13 @@
       // Close any open panels
       send({ type: 'close_panel' });
 
+      // Reset game state
+      if (gameActive) {
+        gameActive = false;
+        activeGameId = null;
+        lastGameDirection = null;
+      }
+
       // Broadcast full emergency stop
       send({ type: 'emergency_stop' });
 
@@ -879,30 +892,36 @@
 
       // Very small dead zone for better sensitivity
       if (normalizedDistance < 0.08) {
-        if (currentDirection !== null) {
+        if (currentDirection !== null && !gameActive) {
           sendStop();
         }
+        lastGameDirection = null;
         return;
       }
-
-      // Calculate motor speed - use full speed even at smaller distances
-      const motorSpeed = speed * Math.max(0.5, normalizedDistance);
 
       // Determine direction based on angle
       let newDirection;
       if (angle >= -45 && angle < 45) {
         newDirection = 'right';
       } else if (angle >= 45 && angle < 135) {
-        newDirection = 'backward';
+        newDirection = gameActive ? 'down' : 'backward';  // down for games
       } else if (angle >= -135 && angle < -45) {
-        newDirection = 'forward';
+        newDirection = gameActive ? 'up' : 'forward';  // up for games
       } else {
         newDirection = 'left';
       }
 
-      // Always send command to ensure motor responds
-      if (currentDirection !== newDirection) {
-        sendMotorCommand(newDirection, motorSpeed);
+      // Send to game OR motor depending on mode
+      if (gameActive) {
+        sendGameControl(newDirection);
+        directionDisplay.textContent = '🎮 ' + newDirection.toUpperCase();
+      } else {
+        // Calculate motor speed - use full speed even at smaller distances
+        const motorSpeed = speed * Math.max(0.5, normalizedDistance);
+        // Always send command to ensure motor responds
+        if (currentDirection !== newDirection) {
+          sendMotorCommand(newDirection, motorSpeed);
+        }
       }
     }
 
@@ -922,18 +941,28 @@
 
         btn.addEventListener('touchstart', (e) => {
           e.preventDefault();
-          sendMotorCommand(motorDir);
+          if (gameActive) {
+            // Send game control
+            sendGameControl(dir);
+            directionDisplay.textContent = '🎮 ' + dir.toUpperCase();
+          } else {
+            sendMotorCommand(motorDir);
+          }
           if (navigator.vibrate) navigator.vibrate(30);
         }, { passive: false });
 
         btn.addEventListener('touchend', (e) => {
           e.preventDefault();
-          sendStop();
+          if (!gameActive) {
+            sendStop();
+          }
         }, { passive: false });
 
         btn.addEventListener('touchcancel', (e) => {
           e.preventDefault();
-          sendStop();
+          if (!gameActive) {
+            sendStop();
+          }
         }, { passive: false });
       });
     }
@@ -1169,51 +1198,223 @@
       }
     }
 
-    // Play honk sound through Web Audio API
-    function playHonk() {
+    // Sound library - better synthesized sounds
+    const soundLibrary = {
+      // Classic car horn - two tones like a real horn
+      honk: (ctx) => {
+        const now = ctx.currentTime;
+        // High tone (F4 = 349Hz)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(349, now);
+        gain1.gain.setValueAtTime(0.6, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.6);
+
+        // Low tone (C4 = 261Hz) - slight delay
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(261, now);
+        gain2.gain.setValueAtTime(0.5, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now);
+        osc2.stop(now + 0.6);
+      },
+
+      // Boing - spring/cartoon bounce
+      boing: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      },
+
+      // Fart - whoopee cushion sound using noise and filter
+      fart: (ctx) => {
+        const now = ctx.currentTime;
+        const bufferSize = ctx.sampleRate * 0.5;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(150, now);
+        filter.frequency.linearRampToValueAtTime(80, now + 0.4);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(now);
+      },
+
+      // Pop - bubble pop
+      pop: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      },
+
+      // Ding - success chime
+      ding: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      },
+
+      // Whoosh - fast movement
+      whoosh: (ctx) => {
+        const now = ctx.currentTime;
+        const bufferSize = ctx.sampleRate * 0.3;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(200, now);
+        filter.frequency.exponentialRampToValueAtTime(2000, now + 0.15);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+        filter.Q.value = 1;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(now);
+      },
+
+      // Buzz - error sound
+      buzz: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.setValueAtTime(0.3, now + 0.1);
+        gain.gain.setValueAtTime(0, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      },
+
+      // Laser - pew pew
+      laser: (ctx) => {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1500, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    };
+
+    // Play a sound from the library
+    function playSound(soundName) {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (soundLibrary[soundName]) {
+        soundLibrary[soundName](audioCtx);
+      }
+      // Broadcast to main UI
+      send({ type: 'play_sound', sound: soundName });
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
 
-      // Create a honk-like sound using oscillators
-      const now = audioCtx.currentTime;
+    // Play honk (wrapper for backwards compatibility)
+    function playHonk() {
+      playSound('honk');
+    }
 
-      // Main honk tone
-      const osc1 = audioCtx.createOscillator();
-      const gain1 = audioCtx.createGain();
-      osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(200, now);
-      osc1.frequency.exponentialRampToValueAtTime(150, now + 0.3);
-      gain1.gain.setValueAtTime(0.5, now);
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-      osc1.connect(gain1);
-      gain1.connect(audioCtx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.4);
+    // Show sounds modal
+    function showSoundsList() {
+      const sounds = [
+        { id: 'honk', name: 'Honk', emoji: '🚗' },
+        { id: 'boing', name: 'Boing', emoji: '🔄' },
+        { id: 'fart', name: 'Fart', emoji: '💨' },
+        { id: 'pop', name: 'Pop', emoji: '💥' },
+        { id: 'ding', name: 'Ding', emoji: '🔔' },
+        { id: 'whoosh', name: 'Whoosh', emoji: '💨' },
+        { id: 'buzz', name: 'Buzz', emoji: '⚡' },
+        { id: 'laser', name: 'Laser', emoji: '🔫' }
+      ];
 
-      // Secondary tone for richness
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(180, now);
-      osc2.frequency.exponentialRampToValueAtTime(140, now + 0.3);
-      gain2.gain.setValueAtTime(0.3, now);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.start(now);
-      osc2.stop(now + 0.35);
+      const modal = document.getElementById('games-modal');
+      const list = document.getElementById('games-list');
+      modal.querySelector('h3').textContent = 'Choose a Sound';
 
-      // Also broadcast to main UI
-      send({ type: 'play_honk' });
+      list.innerHTML = sounds.map(s => `
+        <button class="game-btn" onclick="playSound('${s.id}'); hideSoundsList();">
+          <span class="emoji">${s.emoji}</span>
+          <span class="name">${s.name}</span>
+        </button>
+      `).join('');
 
-      if (navigator.vibrate) navigator.vibrate(100);
+      modal.classList.remove('hidden');
+    }
+
+    function hideSoundsList() {
+      document.getElementById('games-modal').classList.add('hidden');
+      document.getElementById('games-modal').querySelector('h3').textContent = 'Choose a Game';
     }
 
     // Show games list modal
     async function showGamesList() {
       try {
-        const response = await fetch('/api/extensions/category/games');
+        const response = await fetch('/api/extensions/games');
         const data = await response.json();
-        availableGames = data.extensions || [];
+        availableGames = data.games || [];
 
         const gamesList = document.getElementById('games-list');
         const modal = document.getElementById('games-modal');
@@ -1223,7 +1424,7 @@
         } else {
           gamesList.innerHTML = availableGames.map(game => `
             <button class="game-btn" onclick="launchGame('${game.id}')">
-              <span class="emoji">${game.ui?.button_emoji || '🎮'}</span>
+              <span class="emoji">${game.button_emoji || '🎮'}</span>
               <span class="name">${game.name}</span>
             </button>
           `).join('');
@@ -1253,7 +1454,11 @@
         });
 
         if (response.ok) {
-          speak("Let's play!");
+          gameActive = true;
+          activeGameId = gameId;
+          lastGameDirection = null;
+          directionDisplay.textContent = '🎮 GAME';
+          speak("Let's play! Use the joystick to control the game!");
         } else {
           speak("Sorry, I couldn't start the game.");
         }
@@ -1261,6 +1466,23 @@
         console.error('Failed to launch game:', e);
         speak("Sorry, something went wrong.");
       }
+    }
+
+    // Send game control (direction) to the active game
+    function sendGameControl(direction) {
+      if (!gameActive) return;
+      if (direction === lastGameDirection) return;  // Don't spam same direction
+
+      lastGameDirection = direction;
+      send({ type: 'game_control', direction: direction, game_id: activeGameId });
+
+      // Haptic feedback
+      if (navigator.vibrate) navigator.vibrate(20);
+    }
+
+    // Send game action (restart, close)
+    function sendGameAction(action) {
+      send({ type: 'game_action', action: action, game_id: activeGameId });
     }
 
     // Load extension buttons

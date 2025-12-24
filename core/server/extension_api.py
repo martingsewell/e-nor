@@ -250,6 +250,76 @@ class ExtensionAPI:
         })
         return {"success": True, "message": "Movement command sent"}
 
+    async def start_dance(self, duration: float = 5.0) -> Dict:
+        """
+        Start a dance routine - makes E-NOR move side to side.
+        This is similar to disco mode dancing.
+
+        Args:
+            duration: How long to dance in seconds (default 5)
+
+        Returns:
+            dict with success status
+        """
+        import random
+
+        # Enable disco visual mode
+        await self.broadcast({"type": "disco", "enabled": True})
+
+        # Send dance commands for the duration
+        start_time = asyncio.get_event_loop().time()
+        while (asyncio.get_event_loop().time() - start_time) < duration:
+            # Check if we should stop
+            if self.is_stopped():
+                break
+
+            # Random dance direction
+            rand = random.random()
+            if rand < 0.4:
+                direction = 'left'
+            elif rand < 0.8:
+                direction = 'right'
+            elif rand < 0.9:
+                direction = 'forward'
+            else:
+                direction = 'backward'
+
+            # Random speed
+            speed = 0.5 + random.random() * 0.3
+
+            # Send motor command via broadcast (controller will pick it up)
+            await self.broadcast({
+                "type": "dance_move",
+                "direction": direction,
+                "speed": speed,
+                "extension_id": self.extension_id
+            })
+
+            # Wait for a random time before next move
+            await asyncio.sleep(0.2 + random.random() * 0.2)
+
+        # Stop dancing
+        await self.broadcast({"type": "disco", "enabled": False})
+        await self.broadcast({
+            "type": "dance_move",
+            "direction": "stop",
+            "speed": 0,
+            "extension_id": self.extension_id
+        })
+
+        return {"success": True, "message": "Dance complete"}
+
+    async def stop_dance(self) -> Dict:
+        """Stop any active dancing"""
+        await self.broadcast({"type": "disco", "enabled": False})
+        await self.broadcast({
+            "type": "dance_move",
+            "direction": "stop",
+            "speed": 0,
+            "extension_id": self.extension_id
+        })
+        return {"success": True, "message": "Dance stopped"}
+
     # ==================== CLAUDE INTEGRATION ====================
 
     async def ask_claude(self, prompt: str, context: str = None) -> str:

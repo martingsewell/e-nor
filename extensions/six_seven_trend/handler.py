@@ -101,10 +101,13 @@ async def handle_action(action: str, params: dict = None) -> dict:
         
         # Store that we're active
         api.set_data("active", True)
-        
+
         # Start the repeating six seven chant (async task)
         asyncio.create_task(six_seven_chant())
-        
+
+        # Start dancing! (async task - runs for 10 seconds at a time)
+        asyncio.create_task(six_seven_dance())
+
         return {"success": True, "message": "Six seven trend started!"}
     
     elif action == "stop_six_seven_trend":
@@ -134,6 +137,31 @@ async def six_seven_chant():
             # Stop was triggered, exit the loop
             print("[six_seven_trend] Chant loop stopped by emergency stop or deactivation")
             break
+
+
+async def six_seven_dance():
+    """Make E-NOR dance while the six seven trend is active"""
+    while api.get_data("active", False) and not api.is_stopped():
+        # Dance for 10 seconds at a time
+        try:
+            await api.start_dance(duration=10.0)
+        except Exception as e:
+            print(f"[six_seven_trend] Dance error: {e}")
+
+        # Check if we should continue
+        if not api.get_data("active", False) or api.is_stopped():
+            break
+
+        # Brief pause between dance sessions
+        await asyncio.sleep(1)
+
+    # Make sure dance is stopped
+    try:
+        await api.stop_dance()
+    except Exception as e:
+        print(f"[six_seven_trend] Stop dance error: {e}")
+
+    print("[six_seven_trend] Dance loop stopped")
 
 async def on_load():
     """Called when extension loads - reset state"""
